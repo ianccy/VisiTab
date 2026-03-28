@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>New Tab — VisiTab</title>
+  <link rel="stylesheet" href="newtab.css">
+</head>
+<body>
+  <div id="app">
+    <!-- Top Bar -->
+    <header class="topbar">
+      <div class="topbar-left">
+        <h1 class="logo"><img src="icons/icon48.png" alt="logo" class="logo-icon">VisiTab</h1>
+      </div>
+      <div class="topbar-center">
+        <div class="search-bar">
+          <span class="search-icon">🔍</span>
+          <input type="text" id="search-input" placeholder="搜尋所有 tabs..." autocomplete="off">
+          <button id="search-clear" class="search-clear" hidden>✕</button>
+        </div>
+      </div>
+      <div class="topbar-right">
+        <select id="lang-select" class="lang-select"></select>
+        <button id="btn-bg-settings" class="icon-btn" title="背景設定">🖼️</button>
+        <button id="btn-import" class="icon-btn" title="匯入">📥</button>
+        <button id="btn-export" class="icon-btn" title="匯出">📤</button>
+        <button id="btn-theme-toggle" class="theme-toggle" title="切換深色/淺色模式">
+          <span class="theme-toggle-icon moon">🌙</span>
+          <span class="theme-toggle-icon sun">☀️</span>
+        </button>
+      </div>
+    </header>
+
+    <!-- Main Layout -->
+    <div class="main-layout">
+      <!-- Left: Collections -->
+      <main class="collections-area">
+        <div id="collections-list" class="collections-grid"></div>
+        <div class="collections-actions">
+          <button id="btn-add-collection" class="add-collection-btn">+ 新增 Collection</button>
+          <button id="btn-link-folder" class="add-collection-btn link-folder-btn">🔗 連結書籤資料夾</button>
+        </div>
+      </main>
+
+      <!-- Right: Open Tabs Sidebar -->
+      <aside class="open-tabs-sidebar">
+        <div class="sidebar-header">
+          <span class="sidebar-label">開啟中的 Tabs</span>
+          <span id="open-tabs-count" class="sidebar-count">0</span>
+        </div>
+        <div id="open-tabs-list" class="open-tabs-list"></div>
+      </aside>
+    </div>
+  </div>
+  <!-- Background Settings Panel -->
+  <div id="bg-settings-panel" class="bg-settings-panel" hidden>
+    <div class="bg-settings-header">
+      <span id="bg-settings-title" class="bg-settings-title">背景設定</span>
+      <button id="bg-settings-close" class="bg-settings-close">✕</button>
+    </div>
+    <div class="bg-settings-section">
+      <label id="bg-color-label" class="bg-settings-label">背景顏色</label>
+      <div class="bg-color-options">
+        <input type="color" id="bg-color-input" class="bg-color-input" value="#f5f5f9">
+        <button id="bg-reset-btn" class="modal-btn secondary bg-reset-btn">重置背景</button>
+      </div>
+    </div>
+    <div class="bg-settings-section">
+      <label id="bg-image-label" class="bg-settings-label">背景圖片</label>
+      <div id="bg-image-current" class="bg-image-current" hidden>
+        <img id="bg-image-thumb" class="bg-image-thumb" src="" alt="">
+        <span id="bg-image-name" class="bg-image-name"></span>
+        <button id="bg-remove-image-btn" class="bg-remove-btn" title="移除圖片">✕</button>
+      </div>
+      <div class="bg-image-url-row">
+        <input type="text" id="bg-image-url-input" class="bg-image-url-input" placeholder="https://example.com/image.jpg">
+        <button id="bg-image-url-apply" class="modal-btn primary">套用</button>
+      </div>
+    </div>
+  </div>
+  <div id="dropdown-overlay" class="dropdown-overlay" hidden></div>
+  <input type="file" id="import-file-input" accept=".json" hidden>
+  <script type="module" src="js/app.js"></script>
+</body>
+</html>
