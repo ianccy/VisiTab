@@ -1,5 +1,7 @@
 # VisiTab
 
+![VisiTab Demo](images/demo.png)
+
 A Chrome extension that replaces your new tab page with a powerful tab manager. Organize tabs into collections, link bookmark folders, customize backgrounds, and more.
 
 ## Installation
@@ -38,3 +40,7 @@ Open a new tab — VisiTab will replace the default new tab page.
 - **Search** — Search across all collections and open tabs
 - **Import / Export** — Backup and restore collections as JSON
 - **i18n** — Supports English and Traditional Chinese
+
+## License
+
+This project is licensed under [CC BY-ND 4.0](https://creativecommons.org/licenses/by-nd/4.0/). You may share and use it, but modification and redistribution of modified versions are not permitted.
