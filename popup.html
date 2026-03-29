@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8">
+  <link rel="stylesheet" href="popup.css">
+</head>
+<body>
+  <div id="popup">
+    <div class="popup-current-tab">
+      <img id="current-tab-favicon" class="popup-favicon" src="" alt="">
+      <div class="popup-tab-info">
+        <div id="current-tab-title" class="popup-tab-title"></div>
+        <div id="current-tab-url" class="popup-tab-url"></div>
+      </div>
+    </div>
+    <div class="popup-divider"></div>
+    <div id="collections-list" class="popup-collections"></div>
+    <div id="popup-disabled-msg" class="popup-disabled-msg" hidden></div>
+    <button id="btn-confirm" class="popup-confirm-btn" hidden></button>
+    <div class="popup-footer">
+      <span></span>
+      <a id="btn-open-visitab" class="popup-open-link" href="#"></a>
+    </div>
+  </div>
+  <script src="popup.js" type="module"></script>
+</body>
+</html>

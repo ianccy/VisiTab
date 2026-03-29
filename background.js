@@ -1,8 +1,3 @@
-// Open new tab when clicking the extension icon
-chrome.action.onClicked.addListener(() => {
-  chrome.tabs.create({});
-});
-
 // Notify new tab page when tabs change
 chrome.tabs.onCreated.addListener(notifyNewTab);
 chrome.tabs.onRemoved.addListener(notifyNewTab);
