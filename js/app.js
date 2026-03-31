@@ -8,7 +8,8 @@ import {
   getOrderedCollections,
   validateImportData, importData, exportData,
   linkFolder, unlinkFolder,
-  migrateToCloud, hasMigrated, wasMigrationAsked, setMigrationAsked,
+  migrateToCloud, wasMigrationAsked, setMigrationAsked, setMigrationPending,
+  handleUserLogout,
   exportTabToBookmark, exportCollectionToBookmarkFolder,
   backgroundSync,
   DEFAULT_COLORS, DEFAULT_ICONS
@@ -265,21 +266,36 @@ function getLastSyncDisplay() {
 }
 
 async function handleSignIn() {
+  const signInBtn = document.getElementById('btn-sign-in');
+  if (signInBtn) {
+    signInBtn.disabled = true;
+    signInBtn.textContent = t('signInLoading');
+  }
+
   try {
     await signIn();
+
+    // Show explicit loading UI for post-login sync.
+    const syncStatusEl = document.getElementById('sync-status');
+    if (syncStatusEl) syncStatusEl.hidden = false;
+    setSyncStatus('syncing');
+
     data = await loadData();
     renderAll();
 
+    await triggerSync();
+
     const asked = await wasMigrationAsked();
     if (!asked) {
-      const localCollections = data.collections.filter(c => !c.linked);
+      const localCollections = data.collections.filter(c => !c.linked && c.status === 'local');
       if (localCollections.length > 0) {
+        await setMigrationPending();
         renderMigrationModal(
           localCollections,
-          async () => {
+          async (selections) => {
             setSyncStatus('syncing');
             try {
-              data = await migrateToCloud(data);
+              data = await migrateToCloud(data, selections);
               renderAll();
               setSyncStatus('synced');
             } catch (err) {
@@ -291,30 +307,81 @@ async function handleSignIn() {
             }
           },
           async () => {
-            await setMigrationAsked();
-          }
+            await setMigrationAsked('cancelled');
+          },
+          { showKeepOption: false }
         );
       } else {
-        await chrome.storage.local.set({ migrated: true, migrationAsked: true });
+        await chrome.storage.local.set({ migrationAsked: true, migrationDecision: 'confirmed' });
       }
     }
   } catch (err) {
     console.error('Sign in failed:', err);
+    const msg = String(err?.message || err || '');
+    if (/bad client id/i.test(msg)) {
+      const manifest = chrome.runtime.getManifest();
+      const extId = chrome.runtime.id;
+      const clientId = manifest?.oauth2?.client_id || '';
+      renderModal(
+        t('oauthClientIdErrorTitle'),
+        t('oauthClientIdErrorMsg', extId, clientId),
+        [{ label: t('confirm'), style: 'primary' }]
+      );
+      return;
+    }
+  } finally {
+    if (signInBtn) {
+      signInBtn.disabled = false;
+      signInBtn.textContent = t('signIn');
+    }
   }
 }
 
 async function handleSignOut() {
-  await signOut();
-  data = await loadData();
-  renderAll();
-  document.getElementById('user-dropdown').hidden = true;
+  const draftCollections = data.collections.filter(c => !c.linked && c.status === 'local');
+  const draftCount = draftCollections.length;
+  const finalize = async (deleteDrafts) => {
+    await handleUserLogout({ deleteDrafts });
+    await signOut();
+    data = await loadData();
+    renderAll();
+    document.getElementById('user-dropdown').hidden = true;
+  };
+
+  if (draftCount > 0) {
+    renderMigrationModal(
+      draftCollections,
+      async (selections) => {
+        setSyncStatus('syncing');
+        try {
+          data = await migrateToCloud(data, selections);
+          await finalize(false);
+        } catch (err) {
+          console.error('Logout draft processing failed:', err);
+          setSyncStatus('error');
+          renderModal(t('logoutDraftTitle'), t('migrationError'), [
+            { label: t('confirm'), style: 'primary' }
+          ]);
+        }
+      },
+      null,
+      {
+        titleKey: 'logoutDraftTitle',
+        messageKey: 'logoutDraftMsg',
+        confirmKey: 'signOut',
+        cancelKey: 'cancel',
+        showKeepOption: true
+      }
+    );
+    return;
+  }
+
+  await finalize(false);
 }
 
 async function triggerSync() {
   const status = await getStatus();
   if (!status.isSignedIn) return;
-  const migrated = await hasMigrated();
-  if (!migrated) return;
 
   setSyncStatus('syncing');
   try {
@@ -478,7 +545,10 @@ function startInlineRename(card, collectionId) {
   input.addEventListener('click', (e) => e.stopPropagation());
   input.addEventListener('mousedown', (e) => e.stopPropagation());
 
+  let committed = false;
   const commit = async () => {
+    if (committed) return;
+    committed = true;
     const newName = input.value.trim() || currentName;
     await renameCollection(data, collectionId, newName);
     renderCollectionsUI();
@@ -486,10 +556,15 @@ function startInlineRename(card, collectionId) {
 
   input.addEventListener('blur', commit);
   input.addEventListener('keydown', (e) => {
-    if (e.key === 'Enter') input.blur();
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      commit();
+    }
     if (e.key === 'Escape') {
-      input.value = currentName;
-      input.blur();
+      e.preventDefault();
+      if (committed) return;
+      committed = true;
+      renderCollectionsUI();
     }
   });
 }
@@ -512,7 +587,10 @@ function handleRenameTab(collectionId, tabId, titleEl) {
   input.addEventListener('click', (e) => e.stopPropagation());
   input.addEventListener('mousedown', (e) => e.stopPropagation());
 
+  let committed = false;
   const commit = async () => {
+    if (committed) return;
+    committed = true;
     const newName = input.value.trim() || currentName;
     if (newName !== currentName) {
       await renameTab(data, collectionId, tabId, newName);
@@ -522,10 +600,15 @@ function handleRenameTab(collectionId, tabId, titleEl) {
 
   input.addEventListener('blur', commit);
   input.addEventListener('keydown', (e) => {
-    if (e.key === 'Enter') input.blur();
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      commit();
+    }
     if (e.key === 'Escape') {
-      input.value = currentName;
-      input.blur();
+      e.preventDefault();
+      if (committed) return;
+      committed = true;
+      renderCollectionsUI();
     }
   });
 }

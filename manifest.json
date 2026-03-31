@@ -5,7 +5,7 @@
   "description": "Manage your browser tabs with collections",
   "permissions": ["tabs", "storage", "bookmarks", "identity"],
   "oauth2": {
-    "client_id": "68632107320-qmjhk9csks6u0lcf8eshh49gj4chgtsf.apps.googleusercontent.com",
+    "client_id": "68632107320-11cdum9pi5ap74gcrm5fhr6a48kgnac2.apps.googleusercontent.com",
     "scopes": [
       "https://www.googleapis.com/auth/drive.file",
       "https://www.googleapis.com/auth/userinfo.profile",

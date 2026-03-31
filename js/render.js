@@ -117,6 +117,17 @@ function renderCollectionCard(col, handlers) {
     badge.className = 'linked-badge';
     badge.textContent = t('alreadyLinked');
     left.appendChild(badge);
+  } else {
+    const status = col.status || 'local';
+    const badge = document.createElement('span');
+    if (status === 'cloud') {
+      badge.className = 'sync-badge synced';
+      badge.textContent = t('syncedBadge');
+    } else {
+      badge.className = 'sync-badge local';
+      badge.textContent = t('localDraftBadge');
+    }
+    left.appendChild(badge);
   }
 
   const right = document.createElement('div');
@@ -610,7 +621,15 @@ export function renderFolderPicker(tree, excludeId, linkedIds, onSelect) {
   document.body.appendChild(backdrop);
 }
 
-export function renderMigrationModal(collections, onConfirm, onCancel) {
+export function renderMigrationModal(collections, onConfirm, onCancel, options = {}) {
+  const titleKey = options.titleKey || 'migrationTitle';
+  const messageKey = options.messageKey || 'migrationMsg';
+  const confirmKey = options.confirmKey || 'migrationConfirm';
+  const cancelKey = options.cancelKey || 'migrationCancel';
+  const showKeepOption = options.showKeepOption === true;
+  const warningKey = options.warningKey || (!showKeepOption ? 'migrationWarning' : null);
+  const backdropCancel = options.backdropCancel === true;
+
   const backdrop = document.createElement('div');
   backdrop.className = 'modal-backdrop';
 
@@ -618,16 +637,67 @@ export function renderMigrationModal(collections, onConfirm, onCancel) {
   modal.className = 'modal';
 
   const h3 = document.createElement('h3');
-  h3.textContent = t('migrationTitle');
+  h3.textContent = t(titleKey);
 
   const p = document.createElement('p');
-  p.textContent = t('migrationMsg', collections.length);
+  p.textContent = t(messageKey, collections.length);
+
+  let warningEl = null;
+  if (warningKey) {
+    warningEl = document.createElement('div');
+    warningEl.className = 'migration-warning';
+    warningEl.textContent = t(warningKey);
+  }
 
   const list = document.createElement('ul');
   list.className = 'migration-list';
+
+  const selections = new Map();
   for (const col of collections) {
+    selections.set(col.id, { collectionId: col.id, sync: true, keep: !showKeepOption ? false : true });
+
     const li = document.createElement('li');
-    li.textContent = `${col.icon} ${col.name} (${col.tabs.length} tabs)`;
+    li.className = 'migration-item';
+
+    const info = document.createElement('div');
+    info.className = 'migration-item-info';
+    info.textContent = `${col.icon} ${col.name} (${col.tabs.length} tabs)`;
+
+    const controls = document.createElement('div');
+    controls.className = 'migration-item-controls';
+
+    const syncLabel = document.createElement('label');
+    syncLabel.className = 'migration-check';
+    const syncInput = document.createElement('input');
+    syncInput.type = 'checkbox';
+    syncInput.checked = true;
+    const syncText = document.createElement('span');
+    syncText.textContent = t('migrationOptionSync');
+    syncInput.addEventListener('change', () => {
+      const s = selections.get(col.id);
+      selections.set(col.id, { ...s, sync: syncInput.checked });
+    });
+    syncLabel.append(syncInput, syncText);
+
+    controls.append(syncLabel);
+
+    if (showKeepOption) {
+      const keepLabel = document.createElement('label');
+      keepLabel.className = 'migration-check';
+      const keepInput = document.createElement('input');
+      keepInput.type = 'checkbox';
+      keepInput.checked = true;
+      const keepText = document.createElement('span');
+      keepText.textContent = t('migrationOptionKeep');
+      keepInput.addEventListener('change', () => {
+        const s = selections.get(col.id);
+        selections.set(col.id, { ...s, keep: keepInput.checked });
+      });
+      keepLabel.append(keepInput, keepText);
+      controls.append(keepLabel);
+    }
+
+    li.append(info, controls);
     list.appendChild(li);
   }
 
@@ -636,7 +706,7 @@ export function renderMigrationModal(collections, onConfirm, onCancel) {
 
   const cancelBtn = document.createElement('button');
   cancelBtn.className = 'modal-btn secondary';
-  cancelBtn.textContent = t('migrationCancel');
+  cancelBtn.textContent = t(cancelKey);
   cancelBtn.addEventListener('click', () => {
     backdrop.remove();
     if (onCancel) onCancel();
@@ -644,19 +714,23 @@ export function renderMigrationModal(collections, onConfirm, onCancel) {
 
   const confirmBtn = document.createElement('button');
   confirmBtn.className = 'modal-btn primary';
-  confirmBtn.textContent = t('migrationConfirm');
+  confirmBtn.textContent = t(confirmKey);
   confirmBtn.addEventListener('click', () => {
     backdrop.remove();
-    onConfirm();
+    onConfirm(Array.from(selections.values()));
   });
 
   actions.append(cancelBtn, confirmBtn);
-  modal.append(h3, p, list, actions);
+  if (warningEl) {
+    modal.append(h3, p, warningEl, list, actions);
+  } else {
+    modal.append(h3, p, list, actions);
+  }
   backdrop.appendChild(modal);
   backdrop.addEventListener('click', (e) => {
     if (e.target === backdrop) {
       backdrop.remove();
-      if (onCancel) onCancel();
+      if (backdropCancel && onCancel) onCancel();
     }
   });
   document.body.appendChild(backdrop);

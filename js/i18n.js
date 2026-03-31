@@ -55,6 +55,7 @@ const messages = {
     popupAddToCollection: '加入此 Collection',
     // Auth & Sync
     signIn: '登入 Google',
+    signInLoading: '登入中...',
     signOut: '登出',
     syncStatus: '已同步',
     syncing: '同步中...',
@@ -65,12 +66,21 @@ const messages = {
     minutesAgo: (n) => `${n} 分鐘前`,
     // Migration
     migrationTitle: '搬移到 Google 雲端硬碟？',
-    migrationMsg: (n) => `偵測到 ${n} 個本地 Collections。搬移後將從 Chrome 書籤中刪除這些資料夾，改由雲端硬碟儲存與同步。已連結的書籤資料夾不受影響。`,
+    migrationMsg: (n) => `偵測到 ${n} 個本地 Collections。請勾選每個資料夾要不要同步到雲端，以及要不要保留在本機。`,
+    migrationWarning: '提醒：勾選同步後，資料會上傳到目前登入的 Google 帳號，且在其他已登入此帳號的裝置可見。若後續登出並選擇不保留本機資料，這些資料可能會從本機移除。',
     migrationConfirm: '搬移到雲端',
     migrationCancel: '暫時保留',
+    migrationOptionSync: '同步到雲端',
+    migrationOptionKeep: '保留在本機',
     migrationProgress: '搬移中...',
     migrationSuccess: '搬移完成',
     migrationError: '搬移失敗，請稍後再試',
+    logoutDraftTitle: '登出前處理本機草稿',
+    logoutDraftMsg: (n) => `目前有 ${n} 個本機草稿資料夾。請為每個資料夾勾選要不要同步到雲端，以及要不要保留在本機。`,
+    logoutKeepDrafts: '保留草稿並登出',
+    logoutDeleteDrafts: '刪除草稿並登出',
+    oauthClientIdErrorTitle: 'Google 登入設定錯誤',
+    oauthClientIdErrorMsg: (extId, clientId) => `目前的 OAuth Client ID 和擴充功能 ID 不匹配。\n\n請到 Google Cloud Console 建立或更新「Chrome Extension」型別憑證，並把 Extension ID 設為：${extId}\nClient ID 請填到 manifest.json 的 oauth2.client_id。\n\n目前 client_id：${clientId}`,
     // Cloud settings
     cloudSyncSection: '雲端同步',
     cloudAccount: '帳號',
@@ -80,6 +90,8 @@ const messages = {
     exportToBookmarkFolder: '轉存為書籤資料夾',
     bookmarkAdded: '已加入書籤',
     bookmarkFolderCreated: (name, count) => `已建立書籤資料夾「${name}」(${count} 個書籤)`,
+    syncedBadge: '已同步',
+    localDraftBadge: '本機草稿',
   },
   en: {
     headerTitle: 'VisiTab',
@@ -137,6 +149,7 @@ const messages = {
     popupAddToCollection: 'Add to Collection',
     // Auth & Sync
     signIn: 'Sign in with Google',
+    signInLoading: 'Signing in...',
     signOut: 'Sign Out',
     syncStatus: 'Synced',
     syncing: 'Syncing...',
@@ -147,12 +160,21 @@ const messages = {
     minutesAgo: (n) => `${n} min ago`,
     // Migration
     migrationTitle: 'Move to Google Drive?',
-    migrationMsg: (n) => `Found ${n} local collections. They will be moved to Google Drive and removed from Chrome bookmarks. Linked bookmark folders are not affected.`,
+    migrationMsg: (n) => `Found ${n} local collections. Choose per folder whether to sync to cloud and whether to keep it locally.`,
+    migrationWarning: 'Note: If you sync, data is uploaded to the currently signed-in Google account and may be visible on other devices signed in to that account. If you later sign out and choose not to keep local copies, data may be removed from this device.',
     migrationConfirm: 'Move to Drive',
     migrationCancel: 'Not Now',
+    migrationOptionSync: 'Sync to Cloud',
+    migrationOptionKeep: 'Keep Local',
     migrationProgress: 'Moving...',
     migrationSuccess: 'Migration complete',
     migrationError: 'Migration failed, please try again',
+    logoutDraftTitle: 'Handle Local Drafts Before Sign Out',
+    logoutDraftMsg: (n) => `You have ${n} local draft folders. Choose per folder whether to sync to cloud and whether to keep it locally.`,
+    logoutKeepDrafts: 'Keep Drafts and Sign Out',
+    logoutDeleteDrafts: 'Delete Drafts and Sign Out',
+    oauthClientIdErrorTitle: 'Google Sign-in Configuration Error',
+    oauthClientIdErrorMsg: (extId, clientId) => `Your OAuth client ID does not match this extension ID.\n\nCreate or update a Chrome Extension OAuth credential in Google Cloud Console using this Extension ID: ${extId}\nThen put the returned client ID into manifest.json oauth2.client_id.\n\nCurrent client_id: ${clientId}`,
     // Cloud settings
     cloudSyncSection: 'Cloud Sync',
     cloudAccount: 'Account',
@@ -162,6 +184,8 @@ const messages = {
     exportToBookmarkFolder: 'Export as Bookmark Folder',
     bookmarkAdded: 'Bookmark added',
     bookmarkFolderCreated: (name, count) => `Created bookmark folder "${name}" (${count} bookmarks)`,
+    syncedBadge: 'Synced',
+    localDraftBadge: 'Local Draft',
   }
 };
 

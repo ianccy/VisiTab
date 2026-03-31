@@ -3,8 +3,11 @@ const STATUS_CHANGE_LISTENERS = [];
 let cachedUser = null;
 
 export async function signIn() {
-  const token = await getTokenInteractive();
-  if (!token) throw new Error('Failed to get auth token');
+  const tokenResult = await getTokenInteractive();
+  if (!tokenResult.token) {
+    throw new Error(tokenResult.error || 'Failed to get auth token');
+  }
+  const token = tokenResult.token;
 
   const userInfo = await fetchUserInfo(token);
   cachedUser = {
@@ -57,9 +60,21 @@ export function onStatusChange(callback) {
 // --- Internal ---
 
 async function getTokenInteractive() {
-  // Clear old cached token first to force re-authorization with current scopes
-  const res = await chrome.runtime.sendMessage({ type: 'get-auth-token', interactive: true, clearFirst: true });
-  return res?.token || null;
+  try {
+    // First try with clear cache, then fallback to normal interactive request.
+    const first = await chrome.runtime.sendMessage({ type: 'get-auth-token', interactive: true, clearFirst: true });
+    if (first?.token) return { token: first.token, error: null };
+
+    const retry = await chrome.runtime.sendMessage({ type: 'get-auth-token', interactive: true, clearFirst: false });
+    if (retry?.token) return { token: retry.token, error: null };
+
+    return {
+      token: null,
+      error: retry?.error || first?.error || 'Failed to get auth token'
+    };
+  } catch (err) {
+    return { token: null, error: err?.message || 'Failed to get auth token' };
+  }
 }
 
 async function getTokenSilent() {
