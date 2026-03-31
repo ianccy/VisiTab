@@ -7,7 +7,7 @@ import {
 
 import { t } from './i18n.js';
 import { getStatus as getAuthStatus } from './auth.js';
-import { push as drivePush, pull as drivePull, isRemoteNewer } from './driveSync.js';
+import { push as drivePush, pull as drivePull, isRemoteNewer, exists as driveExists } from './driveSync.js';
 
 const DEFAULT_COLORS = [
   '#7c83ff', '#ff7eb3', '#7ecfff', '#7eff83',
@@ -616,6 +616,150 @@ export async function wasMigrationAsked() {
 
 export async function setMigrationAsked() {
   await chrome.storage.local.set({ migrationAsked: true });
+}
+
+// === Login Sync ===
+
+export async function getSyncState() {
+  const hasRemote = await driveExists();
+  let remoteCollections = [];
+  if (hasRemote) {
+    const remoteData = await drivePull();
+    remoteCollections = remoteData?.collections || [];
+  }
+
+  // Local collections: either from cloudData cache or from bookmarks
+  const { cloudData } = await chrome.storage.local.get('cloudData');
+  const localOnly = await loadLocalOnlyData();
+  const cachedCloudCols = cloudData?.collections || [];
+  const localOnlyCols = localOnly.collections || [];
+
+  // Load bookmark collections if not yet migrated
+  const { migrated } = await chrome.storage.local.get('migrated');
+  let bookmarkCols = [];
+  if (!migrated) {
+    const rootId = await ensureRoot();
+    bookmarkCols = await readCollectionsFromBookmarks(rootId);
+  }
+
+  // Determine categories:
+  const remoteNames = new Set(remoteCollections.map(c => c.name));
+  const localCols = migrated ? [...cachedCloudCols, ...localOnlyCols] : bookmarkCols;
+  const localNames = new Set(localCols.map(c => c.name));
+
+  const items = [];
+
+  // Remote-only (on Drive but not local)
+  for (const col of remoteCollections) {
+    if (!localNames.has(col.name)) {
+      items.push({ ...col, status: 'cloud', source: 'remote', checked: true });
+    }
+  }
+
+  // Already synced (same name exists in both)
+  for (const col of remoteCollections) {
+    if (localNames.has(col.name)) {
+      items.push({ ...col, source: 'synced', status: 'cloud', checked: true });
+    }
+  }
+
+  // Local-only (not on Drive)
+  for (const col of localCols) {
+    if (!remoteNames.has(col.name)) {
+      items.push({ ...col, source: 'local', status: 'cloud', checked: true });
+    }
+  }
+
+  return { items, hasRemote };
+}
+
+export async function applySyncSelections(items) {
+  const cloudCollections = [];
+  const localOnlyCollections = [];
+
+  for (const item of items) {
+    if (item.source === 'synced' || (item.checked && item.source === 'remote')) {
+      cloudCollections.push({ id: item.id, name: item.name, color: item.color, icon: item.icon, tabs: item.tabs, status: 'cloud' });
+    } else if (item.checked && item.source === 'local') {
+      const col = {
+        id: item.id || generateId(),
+        name: item.name,
+        color: item.color,
+        icon: item.icon,
+        tabs: (item.tabs || []).map(tab => ({
+          id: tab.id || generateId(),
+          title: tab.title,
+          url: tab.url,
+          favicon: tab.favicon
+        })),
+        status: 'cloud'
+      };
+      cloudCollections.push(col);
+    } else if (!item.checked && item.source === 'local') {
+      localOnlyCollections.push({
+        id: item.id || generateId(),
+        name: item.name,
+        color: item.color,
+        icon: item.icon,
+        tabs: (item.tabs || []).map(tab => ({
+          id: tab.id || generateId(),
+          title: tab.title,
+          url: tab.url,
+          favicon: tab.favicon
+        })),
+        status: 'local'
+      });
+    }
+  }
+
+  // Build final cloud data
+  const cloudData = {
+    version: 1,
+    lastModified: Date.now(),
+    collections: cloudCollections,
+    uiState: {
+      collapsed: {},
+      collectionOrder: cloudCollections.map(c => c.id)
+    }
+  };
+
+  // Push to Drive
+  await drivePush(cloudData);
+
+  // Save local caches
+  await chrome.storage.local.set({
+    cloudData,
+    cloudLastModified: cloudData.lastModified,
+    migrated: true,
+    migrationAsked: true
+  });
+
+  // Save local-only data
+  await saveLocalOnlyData({
+    collections: localOnlyCollections,
+    uiState: {
+      collapsed: {},
+      collectionOrder: localOnlyCollections.map(c => c.id)
+    }
+  });
+
+  return await loadData();
+}
+
+export async function promoteToCloud(data, collectionId) {
+  const col = data.collections.find(c => c.id === collectionId);
+  if (!col || col.status !== 'local') return data;
+  col.status = 'cloud';
+  await saveUIState(data);
+  return data;
+}
+
+export async function demoteToLocal(data, collectionId) {
+  const col = data.collections.find(c => c.id === collectionId);
+  if (!col || col.linked) return data;
+  col.status = 'local';
+  await saveUIState(data);
+  return data;
 }
 
 // === Background Sync ===
