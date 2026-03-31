@@ -53,6 +53,33 @@ const messages = {
     popupDisabledMsg: '無法加入 VisiTab 自身頁面',
     popupAlreadyAdded: '已加入',
     popupAddToCollection: '加入此 Collection',
+    // Auth & Sync
+    signIn: '登入 Google',
+    signOut: '登出',
+    syncStatus: '已同步',
+    syncing: '同步中...',
+    syncFailed: '同步失敗',
+    syncRetry: '重試',
+    lastSync: (time) => `上次同步：${time}`,
+    justNow: '剛剛',
+    minutesAgo: (n) => `${n} 分鐘前`,
+    // Migration
+    migrationTitle: '搬移到 Google 雲端硬碟？',
+    migrationMsg: (n) => `偵測到 ${n} 個本地 Collections。搬移後將從 Chrome 書籤中刪除這些資料夾，改由雲端硬碟儲存與同步。已連結的書籤資料夾不受影響。`,
+    migrationConfirm: '搬移到雲端',
+    migrationCancel: '暫時保留',
+    migrationProgress: '搬移中...',
+    migrationSuccess: '搬移完成',
+    migrationError: '搬移失敗，請稍後再試',
+    // Cloud settings
+    cloudSyncSection: '雲端同步',
+    cloudAccount: '帳號',
+    migrateToCloud: '將本地 Collections 搬移到雲端',
+    // Bookmark export
+    addToBookmarks: '加到 Chrome 書籤',
+    exportToBookmarkFolder: '轉存為書籤資料夾',
+    bookmarkAdded: '已加入書籤',
+    bookmarkFolderCreated: (name, count) => `已建立書籤資料夾「${name}」(${count} 個書籤)`,
   },
   en: {
     headerTitle: 'VisiTab',
@@ -108,6 +135,33 @@ const messages = {
     popupDisabledMsg: 'Cannot add VisiTab page itself',
     popupAlreadyAdded: 'Added',
     popupAddToCollection: 'Add to Collection',
+    // Auth & Sync
+    signIn: 'Sign in with Google',
+    signOut: 'Sign Out',
+    syncStatus: 'Synced',
+    syncing: 'Syncing...',
+    syncFailed: 'Sync Failed',
+    syncRetry: 'Retry',
+    lastSync: (time) => `Last sync: ${time}`,
+    justNow: 'just now',
+    minutesAgo: (n) => `${n} min ago`,
+    // Migration
+    migrationTitle: 'Move to Google Drive?',
+    migrationMsg: (n) => `Found ${n} local collections. They will be moved to Google Drive and removed from Chrome bookmarks. Linked bookmark folders are not affected.`,
+    migrationConfirm: 'Move to Drive',
+    migrationCancel: 'Not Now',
+    migrationProgress: 'Moving...',
+    migrationSuccess: 'Migration complete',
+    migrationError: 'Migration failed, please try again',
+    // Cloud settings
+    cloudSyncSection: 'Cloud Sync',
+    cloudAccount: 'Account',
+    migrateToCloud: 'Move local collections to Drive',
+    // Bookmark export
+    addToBookmarks: 'Add to Chrome Bookmarks',
+    exportToBookmarkFolder: 'Export as Bookmark Folder',
+    bookmarkAdded: 'Bookmark added',
+    bookmarkFolderCreated: (name, count) => `Created bookmark folder "${name}" (${count} bookmarks)`,
   }
 };
 
