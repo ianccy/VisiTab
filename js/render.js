@@ -78,7 +78,6 @@ function renderCollectionCard(col, handlers) {
   card.className = 'collection-card';
   card.dataset.collectionId = col.id;
   card.draggable = true;
-
   // Header
   const header = document.createElement('div');
   header.className = 'collection-header';
@@ -97,6 +96,7 @@ function renderCollectionCard(col, handlers) {
   const name = document.createElement('span');
   name.className = 'collection-name';
   name.textContent = col.name;
+  name.style.color = col.color;
   if (!col.linked) {
     name.style.cursor = 'text';
     name.addEventListener('click', (e) => {
@@ -233,15 +233,6 @@ function renderCollectionTab(tab, collectionId, handlers) {
     if (handlers.onRenameTab) handlers.onRenameTab(collectionId, tab.id, title);
   });
 
-  const bookmarkBtn = document.createElement('button');
-  bookmarkBtn.className = 'tab-edit-btn';
-  bookmarkBtn.title = t('addToBookmarks');
-  bookmarkBtn.textContent = '🔖';
-  bookmarkBtn.addEventListener('click', (e) => {
-    e.stopPropagation();
-    if (handlers.onExportTabToBookmark) handlers.onExportTabToBookmark(tab);
-  });
-
   const removeBtn = document.createElement('button');
   removeBtn.className = 'tab-remove-btn';
   removeBtn.textContent = '✕';
@@ -262,7 +253,7 @@ function renderCollectionTab(tab, collectionId, handlers) {
   });
   info.append(titleRow, urlEl);
 
-  el.append(handle, favicon, info, bookmarkBtn, removeBtn);
+  el.append(handle, favicon, info, removeBtn);
   return el;
 }
 
@@ -350,23 +341,58 @@ export function renderContextMenu(anchorEl, items) {
   overlay.onclick = closeDropdown;
 }
 
-export function renderColorPicker(container, currentColor, colors, onSelect) {
+export function renderColorPicker(_container, currentColor, colors, onSelect) {
+  const backdrop = document.createElement('div');
+  backdrop.className = 'modal-backdrop';
+
+  const panel = document.createElement('div');
+  panel.className = 'picker-panel';
+
   const picker = document.createElement('div');
   picker.className = 'color-picker';
   for (const color of colors) {
     const swatch = document.createElement('div');
     swatch.className = 'color-swatch' + (color === currentColor ? ' active' : '');
     swatch.style.background = color;
-    swatch.addEventListener('click', () => onSelect(color));
+    if (color === '#ffffff') {
+      swatch.style.border = '2px solid #ccc';
+    }
+    swatch.addEventListener('click', () => {
+      backdrop.remove();
+      onSelect(color);
+    });
     picker.appendChild(swatch);
   }
-  container.innerHTML = '';
-  container.appendChild(picker);
+
+  const customRow = document.createElement('div');
+  customRow.className = 'color-custom-row';
+  const colorInput = document.createElement('input');
+  colorInput.type = 'color';
+  colorInput.className = 'color-custom-input';
+  colorInput.value = currentColor || '#7c83ff';
+  const applyBtn = document.createElement('button');
+  applyBtn.className = 'modal-btn primary';
+  applyBtn.textContent = t('confirm');
+  applyBtn.addEventListener('click', () => {
+    backdrop.remove();
+    onSelect(colorInput.value);
+  });
+  customRow.append(colorInput, applyBtn);
+
+  panel.append(picker, customRow);
+  backdrop.appendChild(panel);
+  backdrop.addEventListener('click', (e) => {
+    if (e.target === backdrop) backdrop.remove();
+  });
+  document.body.appendChild(backdrop);
 }
 
-export function renderIconPicker(container, currentIcon, icons, onSelect) {
-  const wrapper = document.createElement('div');
-  wrapper.className = 'icon-picker-wrapper';
+export function renderIconPicker(_container, currentIcon, icons, onSelect) {
+  const backdrop = document.createElement('div');
+  backdrop.className = 'modal-backdrop';
+
+  const panel = document.createElement('div');
+  panel.className = 'picker-panel';
 
   const picker = document.createElement('div');
   picker.className = 'icon-picker';
@@ -374,7 +400,10 @@ export function renderIconPicker(container, currentIcon, icons, onSelect) {
     const opt = document.createElement('div');
     opt.className = 'icon-option' + (ic === currentIcon ? ' active' : '');
     opt.textContent = ic;
-    opt.addEventListener('click', () => onSelect(ic));
+    opt.addEventListener('click', () => {
+      backdrop.remove();
+      onSelect(ic);
+    });
     picker.appendChild(opt);
   }
 
@@ -392,20 +421,29 @@ export function renderIconPicker(container, currentIcon, icons, onSelect) {
   confirmBtn.textContent = t('confirm');
   confirmBtn.addEventListener('click', () => {
     const val = input.value.trim();
-    if (val) onSelect(val);
+    if (val) {
+      backdrop.remove();
+      onSelect(val);
+    }
   });
 
   input.addEventListener('keydown', (e) => {
     if (e.key === 'Enter') {
       const val = input.value.trim();
-      if (val) onSelect(val);
+      if (val) {
+        backdrop.remove();
+        onSelect(val);
+      }
     }
   });
 
   customRow.append(input, confirmBtn);
-  wrapper.append(picker, customRow);
-  container.innerHTML = '';
-  container.appendChild(wrapper);
+  panel.append(picker, customRow);
+  backdrop.appendChild(panel);
+  backdrop.addEventListener('click', (e) => {
+    if (e.target === backdrop) backdrop.remove();
+  });
+  document.body.appendChild(backdrop);
 }
 
 export function renderModal(title, message, buttons) {
@@ -649,6 +687,49 @@ export function renderMigrationModal(collections, onConfirm, onCancel, options =
     warningEl.textContent = t(warningKey);
   }
 
+  // Select all controls
+  const selectAllRow = document.createElement('div');
+  selectAllRow.className = 'migration-select-all';
+
+  const syncInputs = [];
+  const keepInputs = [];
+
+  const selectAllSyncLabel = document.createElement('label');
+  selectAllSyncLabel.className = 'migration-check';
+  const selectAllSyncInput = document.createElement('input');
+  selectAllSyncInput.type = 'checkbox';
+  selectAllSyncInput.checked = true;
+  const selectAllSyncText = document.createElement('span');
+  selectAllSyncText.textContent = t('selectAllSync');
+  selectAllSyncLabel.append(selectAllSyncInput, selectAllSyncText);
+  selectAllRow.appendChild(selectAllSyncLabel);
+
+  if (showKeepOption) {
+    const selectAllKeepLabel = document.createElement('label');
+    selectAllKeepLabel.className = 'migration-check';
+    const selectAllKeepInput = document.createElement('input');
+    selectAllKeepInput.type = 'checkbox';
+    selectAllKeepInput.checked = true;
+    const selectAllKeepText = document.createElement('span');
+    selectAllKeepText.textContent = t('selectAllKeep');
+    selectAllKeepLabel.append(selectAllKeepInput, selectAllKeepText);
+    selectAllRow.appendChild(selectAllKeepLabel);
+
+    selectAllKeepInput.addEventListener('change', () => {
+      for (const cb of keepInputs) {
+        cb.checked = selectAllKeepInput.checked;
+        cb.dispatchEvent(new Event('change'));
+      }
+    });
+  }
+
+  selectAllSyncInput.addEventListener('change', () => {
+    for (const cb of syncInputs) {
+      cb.checked = selectAllSyncInput.checked;
+      cb.dispatchEvent(new Event('change'));
+    }
+  });
+
   const list = document.createElement('ul');
   list.className = 'migration-list';
 
@@ -678,6 +759,7 @@ export function renderMigrationModal(collections, onConfirm, onCancel, options =
       selections.set(col.id, { ...s, sync: syncInput.checked });
     });
     syncLabel.append(syncInput, syncText);
+    syncInputs.push(syncInput);
 
     controls.append(syncLabel);
 
@@ -695,6 +777,7 @@ export function renderMigrationModal(collections, onConfirm, onCancel, options =
       });
       keepLabel.append(keepInput, keepText);
       controls.append(keepLabel);
+      keepInputs.push(keepInput);
     }
 
     li.append(info, controls);
@@ -722,9 +805,9 @@ export function renderMigrationModal(collections, onConfirm, onCancel, options =
 
   actions.append(cancelBtn, confirmBtn);
   if (warningEl) {
-    modal.append(h3, p, warningEl, list, actions);
+    modal.append(h3, p, warningEl, selectAllRow, list, actions);
   } else {
-    modal.append(h3, p, list, actions);
+    modal.append(h3, p, selectAllRow, list, actions);
   }
   backdrop.appendChild(modal);
   backdrop.addEventListener('click', (e) => {

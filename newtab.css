@@ -201,6 +201,65 @@ body {
   background: var(--bg-surface-hover);
 }
 
+/* === Settings Dropdown === */
+.settings-wrapper {
+  position: relative;
+}
+
+.settings-trigger {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-secondary);
+}
+
+.settings-dropdown {
+  position: absolute;
+  top: 100%;
+  right: 0;
+  margin-top: 4px;
+  background: var(--bg-surface);
+  border-radius: 10px;
+  box-shadow: 0 8px 24px var(--shadow-modal);
+  min-width: 200px;
+  padding: 8px 0;
+  z-index: 200;
+}
+
+.settings-dropdown-item {
+  padding: 6px 14px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.settings-dropdown-item .lang-select {
+  flex: 1;
+  margin-left: 8px;
+}
+
+.settings-label {
+  font-size: 13px;
+  color: var(--text-secondary);
+  white-space: nowrap;
+}
+
+.settings-btn {
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 13px;
+  color: var(--text-primary);
+  padding: 4px 0;
+  width: 100%;
+  text-align: left;
+  border-radius: 4px;
+}
+
+.settings-btn:hover {
+  color: var(--accent);
+}
+
 /* === Main Layout === */
 .main-layout {
   display: flex;
@@ -966,11 +1025,40 @@ body {
 }
 
 /* === Color Picker === */
+.picker-panel {
+  background: var(--bg-surface);
+  border-radius: 12px;
+  padding: 24px;
+  max-width: 320px;
+  width: 90%;
+  box-shadow: 0 16px 48px var(--shadow-modal);
+}
+
 .color-picker {
   display: grid;
-  grid-template-columns: repeat(5, 1fr);
+  grid-template-columns: repeat(6, 1fr);
   gap: 8px;
-  padding: 10px 14px;
+  justify-items: center;
+}
+
+.color-custom-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px solid var(--border-color);
+}
+
+.color-custom-input {
+  width: 40px;
+  height: 32px;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  padding: 0;
+  background: none;
 }
 
 .color-swatch {
@@ -1023,8 +1111,11 @@ body {
 .icon-custom-row {
   display: flex;
   align-items: center;
+  justify-content: flex-end;
   gap: 8px;
-  padding: 8px 14px;
+  padding: 8px 0 0;
+  margin-top: 8px;
+  border-top: 1px solid var(--border-color);
 }
 
 .icon-custom-input {
@@ -1598,6 +1689,15 @@ body.has-bg-image .collection-tabs > .tab-item {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.migration-select-all {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  padding-bottom: 8px;
+  margin-bottom: 4px;
+  border-bottom: 1px solid var(--border-color);
 }
 
 .migration-item-controls {

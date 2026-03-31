@@ -10,7 +10,7 @@ import {
   linkFolder, unlinkFolder,
   migrateToCloud, wasMigrationAsked, setMigrationAsked, setMigrationPending,
   handleUserLogout,
-  exportTabToBookmark, exportCollectionToBookmarkFolder,
+  exportCollectionToBookmarkFolder,
   backgroundSync,
   DEFAULT_COLORS, DEFAULT_ICONS
 } from './storage.js';
@@ -21,7 +21,7 @@ import {
   renderFolderPicker, flashElement, renderMigrationModal
 } from './render.js';
 
-import { signIn, signOut, getStatus, onStatusChange } from './auth.js';
+import { signIn, signOut, switchAccount, getStatus, onStatusChange } from './auth.js';
 
 import { initDragDrop } from './dragdrop.js';
 
@@ -178,18 +178,20 @@ function toggleTheme() {
 function applyStaticI18n() {
   const searchInput = document.getElementById('search-input');
   if (searchInput) searchInput.placeholder = t('searchPlaceholder');
-  const btnImport = document.getElementById('btn-import');
-  if (btnImport) btnImport.title = t('import');
-  const btnExport = document.getElementById('btn-export');
-  if (btnExport) btnExport.title = t('export');
+  const importLabel = document.getElementById('settings-import-label');
+  if (importLabel) importLabel.textContent = t('import');
+  const exportLabel = document.getElementById('settings-export-label');
+  if (exportLabel) exportLabel.textContent = t('export');
   const openTabsLabel = document.querySelector('#open-tabs-section .section-label') || document.querySelector('.sidebar-label');
   if (openTabsLabel) openTabsLabel.textContent = t('openTabsLabel');
   const addBtn = document.getElementById('btn-add-collection');
   if (addBtn) addBtn.textContent = t('addCollection');
   const linkBtn = document.getElementById('btn-link-folder');
   if (linkBtn) linkBtn.textContent = t('linkFolder');
-  const bgSettingsBtn = document.getElementById('btn-bg-settings');
-  if (bgSettingsBtn) bgSettingsBtn.title = t('bgSettings');
+  const bgLabel = document.getElementById('settings-bg-label');
+  if (bgLabel) bgLabel.textContent = t('bgSettings');
+  const langLabel = document.getElementById('settings-lang-label');
+  if (langLabel) langLabel.textContent = t('language');
   const bgTitle = document.getElementById('bg-settings-title');
   if (bgTitle) bgTitle.textContent = t('bgSettings');
   const bgColorLabel = document.getElementById('bg-color-label');
@@ -208,6 +210,8 @@ function applyStaticI18n() {
   if (signInBtn) signInBtn.textContent = t('signIn');
   const signOutBtn = document.getElementById('btn-sign-out');
   if (signOutBtn) signOutBtn.textContent = t('signOut');
+  const switchBtn = document.getElementById('btn-switch-account');
+  if (switchBtn) switchBtn.textContent = t('switchAccount');
 }
 
 // === Auth UI ===
@@ -379,6 +383,87 @@ async function handleSignOut() {
   await finalize(false);
 }
 
+async function handleSwitchAccount() {
+  // First handle drafts for current account (same as sign-out)
+  const draftCollections = data.collections.filter(c => !c.linked && c.status === 'local');
+
+  const doSwitch = async () => {
+    document.getElementById('user-dropdown').hidden = true;
+    await handleUserLogout({ deleteDrafts: false });
+
+    try {
+      await switchAccount();
+
+      const syncStatusEl = document.getElementById('sync-status');
+      if (syncStatusEl) syncStatusEl.hidden = false;
+      setSyncStatus('syncing');
+
+      data = await loadData();
+      renderAll();
+      await triggerSync();
+
+      const asked = await wasMigrationAsked();
+      if (!asked) {
+        const localCollections = data.collections.filter(c => !c.linked && c.status === 'local');
+        if (localCollections.length > 0) {
+          await setMigrationPending();
+          renderMigrationModal(
+            localCollections,
+            async (selections) => {
+              setSyncStatus('syncing');
+              try {
+                data = await migrateToCloud(data, selections);
+                renderAll();
+                setSyncStatus('synced');
+              } catch (err) {
+                console.error('Migration failed:', err);
+                setSyncStatus('error');
+              }
+            },
+            async () => {
+              await setMigrationAsked('cancelled');
+            },
+            { showKeepOption: false }
+          );
+        } else {
+          await chrome.storage.local.set({ migrationAsked: true, migrationDecision: 'confirmed' });
+        }
+      }
+    } catch (err) {
+      console.error('Switch account failed:', err);
+      data = await loadData();
+      renderAll();
+    }
+  };
+
+  if (draftCollections.length > 0) {
+    renderMigrationModal(
+      draftCollections,
+      async (selections) => {
+        setSyncStatus('syncing');
+        try {
+          data = await migrateToCloud(data, selections);
+          await doSwitch();
+        } catch (err) {
+          console.error('Draft processing failed:', err);
+          setSyncStatus('error');
+        }
+      },
+      null,
+      {
+        titleKey: 'logoutDraftTitle',
+        messageKey: 'logoutDraftMsg',
+        confirmKey: 'switchAccount',
+        cancelKey: 'cancel',
+        showKeepOption: true
+      }
+    );
+    return;
+  }
+
+  await doSwitch();
+}
+
 async function triggerSync() {
   const status = await getStatus();
   if (!status.isSignedIn) return;
@@ -393,11 +478,6 @@ async function triggerSync() {
   } catch {
     setSyncStatus('error');
   }
-}
-
-async function handleExportTabToBookmark(tab) {
-  await exportTabToBookmark(tab.title, tab.url);
-  showToast(t('bookmarkAdded'));
 }
 
 async function handleExportCollectionToBookmarkFolder(col) {
@@ -508,7 +588,6 @@ function renderCollectionsUI() {
       onRemoveTab: handleRemoveTab,
       onRenameClick: handleRenameClick,
       onRenameTab: handleRenameTab,
-      onExportTabToBookmark: (tab) => handleExportTabToBookmark(tab)
     }
   );
 }
@@ -691,6 +770,30 @@ function handleMenuClick(e, col) {
     { label: t('exportToBookmarkFolder'), action: () => handleExportCollectionToBookmarkFolder(col) }
   );
 
+  if (col.status === 'local' && !col.linked) {
+    items.push({
+      label: t('uploadToCloud'),
+      action: () => {
+        renderMigrationModal(
+          [col],
+          async (selections) => {
+            setSyncStatus('syncing');
+            try {
+              data = await migrateToCloud(data, selections);
+              renderAll();
+              setSyncStatus('synced');
+            } catch (err) {
+              console.error('Upload to cloud failed:', err);
+              setSyncStatus('error');
+            }
+          },
+          null,
+          { showKeepOption: true }
+        );
+      }
+    });
+  }
+
   if (col.linked) {
     items.push({
       label: t('unlinkMenu'),
@@ -741,22 +844,14 @@ function handleMenuClick(e, col) {
 }
 
 function showColorPicker(col) {
-  const card = document.querySelector(`.collection-card[data-collection-id="${col.id}"]`);
-  if (!card) return;
-  const body = card.querySelector('.collection-body');
-  body.classList.remove('collapsed');
-  renderColorPicker(body, col.color, DEFAULT_COLORS, async (color) => {
+  renderColorPicker(null, col.color, DEFAULT_COLORS, async (color) => {
     await updateCollectionColor(data, col.id, color);
     renderCollectionsUI();
   });
 }
 
 function showIconPicker(col) {
-  const card = document.querySelector(`.collection-card[data-collection-id="${col.id}"]`);
-  if (!card) return;
-  const body = card.querySelector('.collection-body');
-  body.classList.remove('collapsed');
-  renderIconPicker(body, col.icon, DEFAULT_ICONS, async (icon) => {
+  renderIconPicker(null, col.icon, DEFAULT_ICONS, async (icon) => {
     await updateCollectionIcon(data, col.id, icon);
     renderCollectionsUI();
   });
@@ -993,6 +1088,7 @@ function setupEventListeners() {
   // Auth
   document.getElementById('btn-sign-in').addEventListener('click', handleSignIn);
   document.getElementById('btn-sign-out').addEventListener('click', handleSignOut);
+  document.getElementById('btn-switch-account').addEventListener('click', handleSwitchAccount);
 
   document.getElementById('user-menu-trigger').addEventListener('click', () => {
     const dropdown = document.getElementById('user-dropdown');
@@ -1007,11 +1103,23 @@ function setupEventListeners() {
     }
   });
 
+  // Settings dropdown
+  document.getElementById('btn-settings').addEventListener('click', () => {
+    const sd = document.getElementById('settings-dropdown');
+    sd.hidden = !sd.hidden;
+  });
+
   document.addEventListener('click', (e) => {
-    const dropdown = document.getElementById('user-dropdown');
-    const trigger = document.getElementById('user-menu-trigger');
-    if (!dropdown.hidden && !dropdown.contains(e.target) && !trigger.contains(e.target)) {
-      dropdown.hidden = true;
+    const userDropdown = document.getElementById('user-dropdown');
+    const userTrigger = document.getElementById('user-menu-trigger');
+    if (!userDropdown.hidden && !userDropdown.contains(e.target) && !userTrigger.contains(e.target)) {
+      userDropdown.hidden = true;
+    }
+
+    const settingsDropdown = document.getElementById('settings-dropdown');
+    const settingsTrigger = document.getElementById('btn-settings');
+    if (!settingsDropdown.hidden && !settingsDropdown.contains(e.target) && !settingsTrigger.contains(e.target)) {
+      settingsDropdown.hidden = true;
     }
   });
 }

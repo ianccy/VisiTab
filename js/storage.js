@@ -11,7 +11,12 @@ import { push as drivePush, pull as drivePull, isRemoteNewer, exists as driveExi
 const DEFAULT_COLORS = [
   '#7c83ff', '#ff7eb3', '#7ecfff', '#7eff83',
   '#ffdb5c', '#ff8c5c', '#c57cff', '#5cffc8',
-  '#ff5c8a', '#5cb8ff'
+  '#ff5c8a', '#5cb8ff',
+  '#f44336', '#e91e63', '#9c27b0', '#673ab7',
+  '#3f51b5', '#2196f3', '#03a9f4', '#00bcd4',
+  '#009688', '#4caf50', '#8bc34a', '#cddc39',
+  '#ffeb3b', '#ffc107', '#ff9800', '#795548',
+  '#607d8b', '#9e9e9e', '#333333', '#ffffff'
 ];
 
 const DEFAULT_ICONS = [
@@ -98,21 +103,10 @@ function upsertMeta(syncMetadata, bookmarkId, patch) {
 
 async function ensureDraftMetadataForCollection(collection) {
   const syncMetadata = await loadSyncMetadata();
-  let changed = false;
-
   if (!syncMetadata[collection.id]) {
     upsertMeta(syncMetadata, collection.id, { uploaded: false, updatedAt: Date.now() });
-    changed = true;
+    await saveSyncMetadata(syncMetadata);
   }
-
-  for (const tab of collection.tabs || []) {
-    if (!syncMetadata[tab.id]) {
-      upsertMeta(syncMetadata, tab.id, { uploaded: false, updatedAt: Date.now() });
-      changed = true;
-    }
-  }
-
-  if (changed) await saveSyncMetadata(syncMetadata);
 }
 
 async function readLocalDraftCollectionsFromBookmarks() {
@@ -334,7 +328,6 @@ export async function removeCollection(data, collectionId) {
     await removeBookmarkFolder(collectionId);
     const syncMetadata = await loadSyncMetadata();
     delete syncMetadata[collectionId];
-    for (const tab of col.tabs || []) delete syncMetadata[tab.id];
     await saveSyncMetadata(syncMetadata);
   }
 
@@ -440,7 +433,6 @@ export async function addTabToCollection(data, collectionId, title, url, favicon
   }
 
   const syncMetadata = await loadSyncMetadata();
-  upsertMeta(syncMetadata, bm.id, { uploaded: false, updatedAt: Date.now() });
   upsertMeta(syncMetadata, collectionId, { uploaded: false, updatedAt: Date.now() });
   await saveSyncMetadata(syncMetadata);
 
@@ -462,7 +454,6 @@ export async function renameTab(data, collectionId, tabId, newTitle) {
 
   await chrome.bookmarks.update(tabId, { title: newTitle });
   const syncMetadata = await loadSyncMetadata();
-  upsertMeta(syncMetadata, tabId, { uploaded: false, updatedAt: Date.now() });
   upsertMeta(syncMetadata, collectionId, { uploaded: false, updatedAt: Date.now() });
   await saveSyncMetadata(syncMetadata);
   await saveUIState(data);
@@ -476,7 +467,6 @@ export async function removeTabFromCollection(data, collectionId, tabId) {
   if (!(col.status === 'cloud' && !col.linked)) {
     await removeBookmarkTab(tabId);
     const syncMetadata = await loadSyncMetadata();
-    delete syncMetadata[tabId];
     upsertMeta(syncMetadata, collectionId, { uploaded: false, updatedAt: Date.now() });
     await saveSyncMetadata(syncMetadata);
   }
@@ -520,7 +510,6 @@ export async function moveTab(data, fromCollectionId, toCollectionId, tabId, toI
     const syncMetadata = await loadSyncMetadata();
     upsertMeta(syncMetadata, fromCollectionId, { uploaded: false, updatedAt: Date.now() });
     upsertMeta(syncMetadata, toCollectionId, { uploaded: false, updatedAt: Date.now() });
-    upsertMeta(syncMetadata, tabId, { uploaded: false, updatedAt: Date.now() });
     await saveSyncMetadata(syncMetadata);
   }
 
@@ -624,7 +613,7 @@ function toCloudCollection(col, syncMetadata) {
     color: col.color,
     icon: col.icon,
     tabs: (col.tabs || []).map(tab => ({
-      id: (syncMetadata[tab.id]?.uuid) || generateId(),
+      id: generateId(),
       title: tab.title,
       url: tab.url,
       favicon: tab.favicon
@@ -664,9 +653,6 @@ export async function migrateToCloud(data, selections = null) {
       if (!choice.sync) continue;
 
       upsertMeta(preparedMetadata, col.id, { uploaded: false, updatedAt: Date.now() });
-      for (const tab of col.tabs || []) {
-        upsertMeta(preparedMetadata, tab.id, { uploaded: false, updatedAt: Date.now() });
-      }
       cloudData.collections.push(toCloudCollection(col, preparedMetadata));
     }
 
@@ -696,14 +682,6 @@ export async function migrateToCloud(data, selections = null) {
           uploaded: false,
           updatedAt: Date.now()
         });
-        for (const tab of col.tabs || []) {
-          const preparedTab = preparedMetadata[tab.id];
-          upsertMeta(syncMetadata, tab.id, {
-            uuid: preparedTab?.uuid,
-            uploaded: false,
-            updatedAt: Date.now()
-          });
-        }
         continue;
       }
 
@@ -713,9 +691,6 @@ export async function migrateToCloud(data, selections = null) {
         // ignore deletion failure for already-missing folder
       }
       delete syncMetadata[col.id];
-      for (const tab of col.tabs || []) {
-        delete syncMetadata[tab.id];
-      }
     }
 
     await saveSyncMetadata(syncMetadata);
@@ -772,13 +747,9 @@ export async function handleUserLogout(options = {}) {
 
     if (shouldDelete) {
       try {
-        await chrome.bookmarks.remove(bookmarkId);
+        await chrome.bookmarks.removeTree(bookmarkId);
       } catch {
-        try {
-          await chrome.bookmarks.removeTree(bookmarkId);
-        } catch {
-          // skip missing/invalid node
-        }
+        // skip missing/invalid node
       }
       continue;
     }
@@ -873,10 +844,6 @@ export async function unlinkFolder(data, folderId) {
 }
 
 // === Bookmark Export ===
-
-export async function exportTabToBookmark(title, url) {
-  await chrome.bookmarks.create({ title, url });
-}
 
 export async function exportCollectionToBookmarkFolder(collection) {
   const folder = await chrome.bookmarks.create({ title: collection.name });

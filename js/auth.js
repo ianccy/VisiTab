@@ -20,6 +20,29 @@ export async function signIn() {
   return { ...cachedUser, token };
 }
 
+export async function switchAccount() {
+  // Clear cached tokens to force account picker
+  await chrome.runtime.sendMessage({ type: 'remove-auth-token' });
+  cachedUser = null;
+  await chrome.storage.local.remove('authUser');
+
+  const tokenResult = await getTokenInteractive();
+  if (!tokenResult.token) {
+    notifyListeners();
+    throw new Error(tokenResult.error || 'Failed to get auth token');
+  }
+
+  const userInfo = await fetchUserInfo(tokenResult.token);
+  cachedUser = {
+    email: userInfo.email,
+    name: userInfo.name,
+    avatar: userInfo.picture
+  };
+  await chrome.storage.local.set({ authUser: cachedUser });
+  notifyListeners();
+  return { ...cachedUser, token: tokenResult.token };
+}
+
 export async function signOut() {
   const token = await getTokenSilent();
   if (token) {
