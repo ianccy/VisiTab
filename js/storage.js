@@ -6,6 +6,8 @@ import {
 } from './bookmarks.js';
 
 import { t } from './i18n.js';
+import { getStatus as getAuthStatus } from './auth.js';
+import { push as drivePush, pull as drivePull, isRemoteNewer } from './driveSync.js';
 
 const DEFAULT_COLORS = [
   '#7c83ff', '#ff7eb3', '#7ecfff', '#7eff83',
@@ -23,6 +25,30 @@ const DEFAULT_ICONS = [
 export { DEFAULT_COLORS, DEFAULT_ICONS };
 
 let rootFolderId = null;
+
+// === Cloud Mode State ===
+
+async function isCloudMode() {
+  const status = await getAuthStatus();
+  if (!status.isSignedIn) return false;
+  const { migrated } = await chrome.storage.local.get('migrated');
+  return migrated === true;
+}
+
+function generateId() {
+  return crypto.randomUUID();
+}
+
+async function loadCloudData() {
+  const { cloudData } = await chrome.storage.local.get('cloudData');
+  return cloudData || { version: 1, lastModified: Date.now(), collections: [], uiState: { collapsed: {}, collectionOrder: [] } };
+}
+
+async function saveCloudData(cloudData) {
+  cloudData.lastModified = Date.now();
+  await chrome.storage.local.set({ cloudData, cloudLastModified: cloudData.lastModified });
+  drivePush(cloudData).catch(err => console.error('Drive push failed:', err));
+}
 
 // === Init ===
 
@@ -125,6 +151,31 @@ async function updateLinkedFolderMeta(folderId, icon, color) {
 
 export async function loadData() {
   try {
+    const cloud = await isCloudMode();
+
+    if (cloud) {
+      const cloudData = await loadCloudData();
+      const collections = cloudData.collections || [];
+      const linkedCollections = await loadLinkedFolders();
+      const allCollections = [...collections, ...linkedCollections];
+
+      const collapsedMap = cloudData.uiState?.collapsed || {};
+      const savedOrder = cloudData.uiState?.collectionOrder || [];
+
+      for (const col of allCollections) {
+        col.collapsed = collapsedMap[col.id] || false;
+      }
+
+      const existingIds = new Set(allCollections.map(c => c.id));
+      const collectionOrder = savedOrder.filter(id => existingIds.has(id));
+      for (const col of allCollections) {
+        if (!collectionOrder.includes(col.id)) collectionOrder.push(col.id);
+      }
+
+      return { collections: allCollections, collectionOrder };
+    }
+
+    // Original local bookmark mode
     const rootId = await ensureRoot();
     const collections = await readCollectionsFromBookmarks(rootId);
     const linkedCollections = await loadLinkedFolders();
@@ -138,7 +189,6 @@ export async function loadData() {
       col.collapsed = collapsedMap[col.id] || false;
     }
 
-    // Build collectionOrder: use saved order, append new ones
     const existingIds = new Set(allCollections.map(c => c.id));
     const collectionOrder = savedOrder.filter(id => existingIds.has(id));
     for (const col of allCollections) {
@@ -160,12 +210,18 @@ export async function saveUIState(data) {
     for (const col of data.collections) {
       if (col.collapsed) collapsed[col.id] = true;
     }
-    await chrome.storage.local.set({
-      uiState: {
-        collapsed,
-        collectionOrder: data.collectionOrder
-      }
-    });
+
+    const cloud = await isCloudMode();
+    if (cloud) {
+      const cloudData = await loadCloudData();
+      cloudData.uiState = { collapsed, collectionOrder: data.collectionOrder };
+      cloudData.collections = data.collections.filter(c => !c.linked);
+      await saveCloudData(cloudData);
+    } else {
+      await chrome.storage.local.set({
+        uiState: { collapsed, collectionOrder: data.collectionOrder }
+      });
+    }
   } catch (err) {
     showError(t('saveError', err.message));
   }
@@ -174,18 +230,25 @@ export async function saveUIState(data) {
 // === Collection Operations ===
 
 export async function addCollection(data, name, color, icon) {
-  const rootId = await ensureRoot();
   color = color || DEFAULT_COLORS[Math.floor(Math.random() * DEFAULT_COLORS.length)];
   icon = icon || '📁';
+
+  const cloud = await isCloudMode();
+
+  if (cloud) {
+    const col = { id: generateId(), name, color, icon, collapsed: false, tabs: [] };
+    data.collections.push(col);
+    data.collectionOrder.push(col.id);
+    await saveUIState(data);
+    return col;
+  }
+
+  const rootId = await ensureRoot();
   const folder = await createBookmarkFolder(rootId, icon, name, color);
   const col = {
     id: folder.id,
     bookmarkId: folder.id,
-    name,
-    color,
-    icon,
-    collapsed: false,
-    tabs: []
+    name, color, icon, collapsed: false, tabs: []
   };
   data.collections.push(col);
   data.collectionOrder.push(col.id);
@@ -198,7 +261,12 @@ export async function removeCollection(data, collectionId) {
   if (col?.linked) {
     return await unlinkFolder(data, collectionId);
   }
-  await removeBookmarkFolder(collectionId);
+
+  const cloud = await isCloudMode();
+  if (!cloud) {
+    await removeBookmarkFolder(collectionId);
+  }
+
   data.collections = data.collections.filter(c => c.id !== collectionId);
   data.collectionOrder = data.collectionOrder.filter(id => id !== collectionId);
   await saveUIState(data);
@@ -209,7 +277,13 @@ export async function renameCollection(data, collectionId, newName) {
   const col = data.collections.find(c => c.id === collectionId);
   if (!col || col.linked) return data;
   col.name = newName;
-  await updateBookmarkFolder(collectionId, col.icon, newName, col.color);
+
+  const cloud = await isCloudMode();
+  if (cloud) {
+    await saveUIState(data);
+  } else {
+    await updateBookmarkFolder(collectionId, col.icon, newName, col.color);
+  }
   return data;
 }
 
@@ -217,10 +291,16 @@ export async function updateCollectionColor(data, collectionId, color) {
   const col = data.collections.find(c => c.id === collectionId);
   if (!col) return data;
   col.color = color;
+
   if (col.linked) {
     await updateLinkedFolderMeta(collectionId, col.icon, color);
   } else {
-    await updateBookmarkFolder(collectionId, col.icon, col.name, color);
+    const cloud = await isCloudMode();
+    if (cloud) {
+      await saveUIState(data);
+    } else {
+      await updateBookmarkFolder(collectionId, col.icon, col.name, color);
+    }
   }
   return data;
 }
@@ -229,10 +309,16 @@ export async function updateCollectionIcon(data, collectionId, icon) {
   const col = data.collections.find(c => c.id === collectionId);
   if (!col) return data;
   col.icon = icon;
+
   if (col.linked) {
     await updateLinkedFolderMeta(collectionId, icon, col.color);
   } else {
-    await updateBookmarkFolder(collectionId, icon, col.name, col.color);
+    const cloud = await isCloudMode();
+    if (cloud) {
+      await saveUIState(data);
+    } else {
+      await updateBookmarkFolder(collectionId, icon, col.name, col.color);
+    }
   }
   return data;
 }
@@ -252,14 +338,30 @@ export async function addTabToCollection(data, collectionId, title, url, favicon
   const exists = col.tabs.some(t => t.url === url);
   if (exists) return { data, duplicate: true };
 
+  const cloud = await isCloudMode();
+  const hostname = new URL(url).hostname;
+
+  if (cloud && !col.linked) {
+    const tab = {
+      id: generateId(),
+      title, url,
+      favicon: favicon || `https://www.google.com/s2/favicons?domain=${hostname}&sz=32`
+    };
+    if (index >= 0 && index <= col.tabs.length) {
+      col.tabs.splice(index, 0, tab);
+    } else {
+      col.tabs.push(tab);
+    }
+    await saveUIState(data);
+    return { data, duplicate: false };
+  }
+
   const bmIndex = (index >= 0) ? index : undefined;
   const bm = await createBookmarkTab(collectionId, title, url, bmIndex);
-  const hostname = new URL(url).hostname;
   const tab = {
     id: bm.id,
     bookmarkId: bm.id,
-    title,
-    url,
+    title, url,
     favicon: favicon || `https://www.google.com/s2/favicons?domain=${hostname}&sz=32`
   };
 
@@ -277,15 +379,30 @@ export async function renameTab(data, collectionId, tabId, newTitle) {
   const tab = col.tabs.find(t => t.id === tabId);
   if (!tab) return data;
   tab.title = newTitle;
-  await chrome.bookmarks.update(tabId, { title: newTitle });
+
+  const cloud = await isCloudMode();
+  if (cloud && !col.linked) {
+    await saveUIState(data);
+  } else {
+    await chrome.bookmarks.update(tabId, { title: newTitle });
+  }
   return data;
 }
 
 export async function removeTabFromCollection(data, collectionId, tabId) {
   const col = data.collections.find(c => c.id === collectionId);
   if (!col) return data;
-  await removeBookmarkTab(tabId);
+
+  const cloud = await isCloudMode();
+  if (!cloud || col.linked) {
+    await removeBookmarkTab(tabId);
+  }
+
   col.tabs = col.tabs.filter(t => t.id !== tabId);
+
+  if (cloud && !col.linked) {
+    await saveUIState(data);
+  }
   return data;
 }
 
@@ -294,7 +411,13 @@ export async function reorderTab(data, collectionId, fromIndex, toIndex) {
   if (!col) return data;
   const [tab] = col.tabs.splice(fromIndex, 1);
   col.tabs.splice(toIndex, 0, tab);
-  await moveBookmark(tab.id, collectionId, toIndex);
+
+  const cloud = await isCloudMode();
+  if (cloud && !col.linked) {
+    await saveUIState(data);
+  } else {
+    await moveBookmark(tab.id, collectionId, toIndex);
+  }
   return data;
 }
 
@@ -306,7 +429,13 @@ export async function moveTab(data, fromCollectionId, toCollectionId, tabId, toI
   if (tabIndex === -1) return data;
   const [tab] = fromCol.tabs.splice(tabIndex, 1);
   toCol.tabs.splice(toIndex, 0, tab);
-  await moveBookmark(tabId, toCollectionId, toIndex);
+
+  const cloud = await isCloudMode();
+  if (cloud && !fromCol.linked && !toCol.linked) {
+    await saveUIState(data);
+  } else {
+    await moveBookmark(tabId, toCollectionId, toIndex);
+  }
   return data;
 }
 
@@ -396,6 +525,112 @@ export function exportData(data) {
     }))
   };
   return JSON.stringify(exportObj, null, 2);
+}
+
+// === Migration ===
+
+export async function migrateToCloud(data) {
+  const localCollections = data.collections.filter(c => !c.linked);
+  const cloudCollections = localCollections.map(col => ({
+    id: generateId(),
+    name: col.name,
+    color: col.color,
+    icon: col.icon,
+    tabs: col.tabs.map(tab => ({
+      id: generateId(),
+      title: tab.title,
+      url: tab.url,
+      favicon: tab.favicon
+    }))
+  }));
+
+  const cloudData = {
+    version: 1,
+    lastModified: Date.now(),
+    collections: cloudCollections,
+    uiState: {
+      collapsed: {},
+      collectionOrder: cloudCollections.map(c => c.id)
+    }
+  };
+
+  // Push to Drive first
+  await drivePush(cloudData);
+
+  // Save local cache
+  await chrome.storage.local.set({
+    cloudData,
+    cloudLastModified: cloudData.lastModified,
+    migrated: true,
+    migrationAsked: true
+  });
+
+  // Delete local bookmark folders
+  for (const col of localCollections) {
+    try {
+      await removeBookmarkFolder(col.bookmarkId || col.id);
+    } catch {}
+  }
+
+  return await loadData();
+}
+
+export async function hasMigrated() {
+  const { migrated } = await chrome.storage.local.get('migrated');
+  return migrated === true;
+}
+
+export async function wasMigrationAsked() {
+  const { migrationAsked } = await chrome.storage.local.get('migrationAsked');
+  return migrationAsked === true;
+}
+
+export async function setMigrationAsked() {
+  await chrome.storage.local.set({ migrationAsked: true });
+}
+
+// === Background Sync ===
+
+export async function backgroundSync(data, onUpdated) {
+  try {
+    const { cloudLastModified } = await chrome.storage.local.get('cloudLastModified');
+    const localTimestamp = cloudLastModified || 0;
+
+    const newer = await isRemoteNewer(localTimestamp);
+    if (!newer) return false;
+
+    const remoteData = await drivePull();
+    if (!remoteData) return false;
+
+    await chrome.storage.local.set({
+      cloudData: remoteData,
+      cloudLastModified: remoteData.lastModified
+    });
+
+    if (onUpdated) onUpdated();
+    return true;
+  } catch (err) {
+    console.error('Background sync failed:', err);
+    return false;
+  }
+}
+
+// === Bookmark Export ===
+
+export async function exportTabToBookmark(title, url) {
+  await chrome.bookmarks.create({ title, url });
+}
+
+export async function exportCollectionToBookmarkFolder(collection) {
+  const folder = await chrome.bookmarks.create({ title: collection.name });
+  for (const tab of collection.tabs) {
+    await chrome.bookmarks.create({
+      parentId: folder.id,
+      title: tab.title,
+      url: tab.url
+    });
+  }
+  return collection.tabs.length;
 }
 
 // === Error Display ===
