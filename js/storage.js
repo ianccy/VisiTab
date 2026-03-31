@@ -50,6 +50,15 @@ async function saveCloudData(cloudData) {
   drivePush(cloudData).catch(err => console.error('Drive push failed:', err));
 }
 
+async function loadLocalOnlyData() {
+  const { localOnlyData } = await chrome.storage.local.get('localOnlyData');
+  return localOnlyData || { collections: [], uiState: { collapsed: {}, collectionOrder: [] } };
+}
+
+async function saveLocalOnlyData(localOnly) {
+  await chrome.storage.local.set({ localOnlyData: localOnly });
+}
+
 // === Init ===
 
 async function ensureRoot() {
@@ -155,12 +164,17 @@ export async function loadData() {
 
     if (cloud) {
       const cloudData = await loadCloudData();
-      const collections = cloudData.collections || [];
+      const collections = (cloudData.collections || []).map(c => ({ ...c, status: 'cloud' }));
       const linkedCollections = await loadLinkedFolders();
-      const allCollections = [...collections, ...linkedCollections];
 
-      const collapsedMap = cloudData.uiState?.collapsed || {};
-      const savedOrder = cloudData.uiState?.collectionOrder || [];
+      // Load local-only collections
+      const localOnly = await loadLocalOnlyData();
+      const localOnlyCollections = (localOnly.collections || []).map(c => ({ ...c, status: 'local' }));
+
+      const allCollections = [...collections, ...localOnlyCollections, ...linkedCollections];
+
+      const collapsedMap = { ...(cloudData.uiState?.collapsed || {}), ...(localOnly.uiState?.collapsed || {}) };
+      const savedOrder = [...(cloudData.uiState?.collectionOrder || []), ...(localOnly.uiState?.collectionOrder || [])];
 
       for (const col of allCollections) {
         col.collapsed = collapsedMap[col.id] || false;
@@ -213,10 +227,24 @@ export async function saveUIState(data) {
 
     const cloud = await isCloudMode();
     if (cloud) {
+      const cloudCols = data.collections.filter(c => !c.linked && c.status !== 'local');
+      const localOnlyCols = data.collections.filter(c => c.status === 'local');
+
       const cloudData = await loadCloudData();
-      cloudData.uiState = { collapsed, collectionOrder: data.collectionOrder };
-      cloudData.collections = data.collections.filter(c => !c.linked);
+      cloudData.uiState = {
+        collapsed: Object.fromEntries(Object.entries(collapsed).filter(([id]) => cloudCols.some(c => c.id === id))),
+        collectionOrder: data.collectionOrder.filter(id => cloudCols.some(c => c.id === id))
+      };
+      cloudData.collections = cloudCols;
       await saveCloudData(cloudData);
+
+      const localOnly = await loadLocalOnlyData();
+      localOnly.uiState = {
+        collapsed: Object.fromEntries(Object.entries(collapsed).filter(([id]) => localOnlyCols.some(c => c.id === id))),
+        collectionOrder: data.collectionOrder.filter(id => localOnlyCols.some(c => c.id === id))
+      };
+      localOnly.collections = localOnlyCols;
+      await saveLocalOnlyData(localOnly);
     } else {
       await chrome.storage.local.set({
         uiState: { collapsed, collectionOrder: data.collectionOrder }
@@ -229,20 +257,21 @@ export async function saveUIState(data) {
 
 // === Collection Operations ===
 
-export async function addCollection(data, name, color, icon) {
+export async function addCollection(data, name, color, icon, status = 'cloud') {
   color = color || DEFAULT_COLORS[Math.floor(Math.random() * DEFAULT_COLORS.length)];
   icon = icon || '📁';
 
   const cloud = await isCloudMode();
 
   if (cloud) {
-    const col = { id: generateId(), name, color, icon, collapsed: false, tabs: [] };
+    const col = { id: generateId(), name, color, icon, collapsed: false, tabs: [], status };
     data.collections.push(col);
     data.collectionOrder.push(col.id);
     await saveUIState(data);
     return col;
   }
 
+  // Local bookmark mode (unchanged)
   const rootId = await ensureRoot();
   const folder = await createBookmarkFolder(rootId, icon, name, color);
   const col = {
