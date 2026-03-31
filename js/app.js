@@ -8,14 +8,19 @@ import {
   getOrderedCollections,
   validateImportData, importData, exportData,
   linkFolder, unlinkFolder,
+  migrateToCloud, hasMigrated, wasMigrationAsked, setMigrationAsked,
+  exportTabToBookmark, exportCollectionToBookmarkFolder,
+  backgroundSync,
   DEFAULT_COLORS, DEFAULT_ICONS
 } from './storage.js';
 
 import {
   renderOpenTabs, renderCollections, renderAddDropdown, closeDropdown,
   renderContextMenu, renderColorPicker, renderIconPicker, renderModal,
-  renderFolderPicker, flashElement
+  renderFolderPicker, flashElement, renderMigrationModal
 } from './render.js';
+
+import { signIn, signOut, getStatus, onStatusChange } from './auth.js';
 
 import { initDragDrop } from './dragdrop.js';
 
@@ -26,6 +31,7 @@ import { getBookmarkTree, getRootFolderId } from './bookmarks.js';
 let data = { collections: [], collectionOrder: [] };
 let openTabs = [];
 let searchQuery = '';
+let lastSyncTime = null;
 
 // === Background Customization ===
 
@@ -197,6 +203,151 @@ function applyStaticI18n() {
   if (bgResetBtn) bgResetBtn.textContent = t('bgReset');
   const bgRemoveBtn = document.getElementById('bg-remove-image-btn');
   if (bgRemoveBtn) bgRemoveBtn.title = t('bgRemoveImage');
+  const signInBtn = document.getElementById('btn-sign-in');
+  if (signInBtn) signInBtn.textContent = t('signIn');
+  const signOutBtn = document.getElementById('btn-sign-out');
+  if (signOutBtn) signOutBtn.textContent = t('signOut');
+}
+
+// === Auth UI ===
+
+async function initAuth() {
+  const status = await getStatus();
+  updateAuthUI(status);
+  onStatusChange(updateAuthUI);
+}
+
+function updateAuthUI(status) {
+  const signInBtn = document.getElementById('btn-sign-in');
+  const userTrigger = document.getElementById('user-menu-trigger');
+  const avatar = document.getElementById('user-avatar');
+  const syncStatus = document.getElementById('sync-status');
+
+  if (status.isSignedIn) {
+    signInBtn.hidden = true;
+    userTrigger.hidden = false;
+    avatar.src = status.user.avatar || '';
+    syncStatus.hidden = false;
+    setSyncStatus('synced');
+  } else {
+    signInBtn.hidden = false;
+    userTrigger.hidden = true;
+    syncStatus.hidden = true;
+  }
+}
+
+function setSyncStatus(state) {
+  const indicator = document.getElementById('sync-indicator');
+  const text = document.getElementById('sync-text');
+  const container = document.getElementById('sync-status');
+
+  indicator.className = 'sync-indicator ' + state;
+  container.style.cursor = '';
+  container.onclick = null;
+
+  if (state === 'synced') {
+    text.textContent = t('syncStatus');
+    lastSyncTime = Date.now();
+  } else if (state === 'syncing') {
+    text.textContent = t('syncing');
+  } else if (state === 'error') {
+    text.textContent = t('syncFailed');
+    container.style.cursor = 'pointer';
+    container.onclick = () => triggerSync();
+  }
+}
+
+function getLastSyncDisplay() {
+  if (!lastSyncTime) return '';
+  const diff = Math.floor((Date.now() - lastSyncTime) / 60000);
+  if (diff < 1) return t('justNow');
+  return t('minutesAgo', diff);
+}
+
+async function handleSignIn() {
+  try {
+    await signIn();
+    data = await loadData();
+    renderAll();
+
+    const asked = await wasMigrationAsked();
+    if (!asked) {
+      const localCollections = data.collections.filter(c => !c.linked);
+      if (localCollections.length > 0) {
+        renderMigrationModal(
+          localCollections,
+          async () => {
+            setSyncStatus('syncing');
+            try {
+              data = await migrateToCloud(data);
+              renderAll();
+              setSyncStatus('synced');
+            } catch (err) {
+              console.error('Migration failed:', err);
+              setSyncStatus('error');
+              renderModal(t('migrationTitle'), t('migrationError'), [
+                { label: t('confirm'), style: 'primary' }
+              ]);
+            }
+          },
+          async () => {
+            await setMigrationAsked();
+          }
+        );
+      } else {
+        await chrome.storage.local.set({ migrated: true, migrationAsked: true });
+      }
+    }
+  } catch (err) {
+    console.error('Sign in failed:', err);
+  }
+}
+
+async function handleSignOut() {
+  await signOut();
+  data = await loadData();
+  renderAll();
+  document.getElementById('user-dropdown').hidden = true;
+}
+
+async function triggerSync() {
+  const status = await getStatus();
+  if (!status.isSignedIn) return;
+  const migrated = await hasMigrated();
+  if (!migrated) return;
+
+  setSyncStatus('syncing');
+  try {
+    await backgroundSync(data, async () => {
+      data = await loadData();
+      renderAll();
+    });
+    setSyncStatus('synced');
+  } catch {
+    setSyncStatus('error');
+  }
+}
+
+async function handleExportTabToBookmark(tab) {
+  await exportTabToBookmark(tab.title, tab.url);
+  showToast(t('bookmarkAdded'));
+}
+
+async function handleExportCollectionToBookmarkFolder(col) {
+  const count = await exportCollectionToBookmarkFolder(col);
+  showToast(t('bookmarkFolderCreated', col.name, count));
+}
+
+function showToast(msg) {
+  let toast = document.querySelector('.toast');
+  if (!toast) {
+    toast = document.createElement('div');
+    toast.className = 'toast';
+    document.body.appendChild(toast);
+  }
+  toast.textContent = msg;
+  toast.classList.add('visible');
+  setTimeout(() => toast.classList.remove('visible'), 2500);
 }
 
 function setupLangSelector() {
@@ -235,6 +386,9 @@ async function init() {
     onMoveTab: handleMoveTab,
     onDropOpenTab: handleDropOpenTab
   });
+
+  await initAuth();
+  triggerSync();
 
   chrome.runtime.onMessage.addListener((msg) => {
     if (msg.type === 'tabs-updated') refreshOpenTabs().then(renderOpenTabsUI);
@@ -286,7 +440,8 @@ function renderCollectionsUI() {
       onToggleCollapse: handleToggleCollapse,
       onRemoveTab: handleRemoveTab,
       onRenameClick: handleRenameClick,
-      onRenameTab: handleRenameTab
+      onRenameTab: handleRenameTab,
+      onExportTabToBookmark: (tab) => handleExportTabToBookmark(tab)
     }
   );
 }
@@ -449,7 +604,8 @@ function handleMenuClick(e, col) {
 
   items.push(
     { label: t('changeColor'), action: () => showColorPicker(col) },
-    { label: t('changeIcon'), action: () => showIconPicker(col) }
+    { label: t('changeIcon'), action: () => showIconPicker(col) },
+    { label: t('exportToBookmarkFolder'), action: () => handleExportCollectionToBookmarkFolder(col) }
   );
 
   if (col.linked) {
@@ -750,6 +906,31 @@ function setupEventListeners() {
   setupExportImport();
   setupBackgroundSettings();
   setupTooltip();
+
+  // Auth
+  document.getElementById('btn-sign-in').addEventListener('click', handleSignIn);
+  document.getElementById('btn-sign-out').addEventListener('click', handleSignOut);
+
+  document.getElementById('user-menu-trigger').addEventListener('click', () => {
+    const dropdown = document.getElementById('user-dropdown');
+    dropdown.hidden = !dropdown.hidden;
+    if (!dropdown.hidden) {
+      const emailEl = document.getElementById('user-email');
+      const syncInfo = document.getElementById('user-sync-info');
+      getStatus().then(s => {
+        emailEl.textContent = s.user?.email || '';
+        syncInfo.textContent = lastSyncTime ? t('lastSync', getLastSyncDisplay()) : '';
+      });
+    }
+  });
+
+  document.addEventListener('click', (e) => {
+    const dropdown = document.getElementById('user-dropdown');
+    const trigger = document.getElementById('user-menu-trigger');
+    if (!dropdown.hidden && !dropdown.contains(e.target) && !trigger.contains(e.target)) {
+      dropdown.hidden = true;
+    }
+  });
 }
 
 // === Start ===
