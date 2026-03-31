@@ -20,7 +20,7 @@ export async function signIn() {
 export async function signOut() {
   const token = await getTokenSilent();
   if (token) {
-    await chrome.identity.removeCachedAuthToken({ token });
+    await chrome.runtime.sendMessage({ type: 'remove-auth-token', token });
   }
   cachedUser = null;
   await chrome.storage.local.remove('authUser');
@@ -56,28 +56,14 @@ export function onStatusChange(callback) {
 
 // --- Internal ---
 
-function getTokenInteractive() {
-  return new Promise((resolve) => {
-    chrome.identity.getAuthToken({ interactive: true }, (token) => {
-      if (chrome.runtime.lastError || !token) {
-        resolve(null);
-      } else {
-        resolve(token);
-      }
-    });
-  });
+async function getTokenInteractive() {
+  const res = await chrome.runtime.sendMessage({ type: 'get-auth-token', interactive: true });
+  return res?.token || null;
 }
 
-function getTokenSilent() {
-  return new Promise((resolve) => {
-    chrome.identity.getAuthToken({ interactive: false }, (token) => {
-      if (chrome.runtime.lastError || !token) {
-        resolve(null);
-      } else {
-        resolve(token);
-      }
-    });
-  });
+async function getTokenSilent() {
+  const res = await chrome.runtime.sendMessage({ type: 'get-auth-token', interactive: false });
+  return res?.token || null;
 }
 
 async function fetchUserInfo(token) {
