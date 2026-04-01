@@ -67,6 +67,12 @@ async function loadCloudData() {
   };
 }
 
+let _onPushStatusChange = null;
+
+export function onPushStatusChange(callback) {
+  _onPushStatusChange = callback;
+}
+
 async function saveCloudData(cloudData, options = {}) {
   cloudData.lastModified = Date.now();
   await chrome.storage.local.set({
@@ -76,10 +82,23 @@ async function saveCloudData(cloudData, options = {}) {
   const immediate = options.immediate === true;
   const debounceMs = Number.isFinite(options.debounceMs) ? options.debounceMs : 3000;
   if (immediate) {
-    await drivePush(cloudData, { immediate: true });
+    if (_onPushStatusChange) _onPushStatusChange('syncing');
+    try {
+      await drivePush(cloudData, { immediate: true });
+      if (_onPushStatusChange) _onPushStatusChange('synced');
+    } catch (err) {
+      console.error('Drive push failed:', err);
+      if (_onPushStatusChange) _onPushStatusChange('error');
+    }
     return;
   }
-  drivePush(cloudData, { debounceMs }).catch(err => console.error('Drive push failed:', err));
+  if (_onPushStatusChange) _onPushStatusChange('syncing');
+  drivePush(cloudData, { debounceMs })
+    .then(() => { if (_onPushStatusChange) _onPushStatusChange('synced'); })
+    .catch(err => {
+      console.error('Drive push failed:', err);
+      if (_onPushStatusChange) _onPushStatusChange('error');
+    });
 }
 
 async function loadSyncMetadata() {
@@ -774,27 +793,22 @@ export async function handleUserLogout(options = {}) {
 // === Background Sync ===
 
 export async function backgroundSync(data, onUpdated) {
-  try {
-    const { cloudLastModified } = await chrome.storage.local.get('cloudLastModified');
-    const localTimestamp = cloudLastModified || 0;
+  const { cloudLastModified } = await chrome.storage.local.get('cloudLastModified');
+  const localTimestamp = cloudLastModified || 0;
 
-    const newer = await isRemoteNewer(localTimestamp);
-    if (!newer) return false;
+  const newer = await isRemoteNewer(localTimestamp);
+  if (!newer) return false;
 
-    const remoteData = await drivePull();
-    if (!remoteData) return false;
+  const remoteData = await drivePull();
+  if (!remoteData) return false;
 
-    await chrome.storage.local.set({
-      cloudData: remoteData,
-      cloudLastModified: remoteData.lastModified || Date.now()
-    });
+  await chrome.storage.local.set({
+    cloudData: remoteData,
+    cloudLastModified: remoteData.lastModified || Date.now()
+  });
 
-    if (onUpdated) onUpdated();
-    return true;
-  } catch (err) {
-    console.error('Background sync failed:', err);
-    return false;
-  }
+  if (onUpdated) onUpdated();
+  return true;
 }
 
 // === Linked Folders ===

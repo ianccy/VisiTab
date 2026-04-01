@@ -12,6 +12,7 @@ import {
   handleUserLogout,
   exportCollectionToBookmarkFolder,
   backgroundSync,
+  onPushStatusChange,
   DEFAULT_COLORS, DEFAULT_ICONS
 } from './storage.js';
 
@@ -220,6 +221,7 @@ async function initAuth() {
   const status = await getStatus();
   updateAuthUI(status);
   onStatusChange(updateAuthUI);
+  onPushStatusChange(setSyncStatus);
 }
 
 function updateAuthUI(status) {
@@ -233,7 +235,6 @@ function updateAuthUI(status) {
     userTrigger.hidden = false;
     avatar.src = status.user.avatar || '';
     syncStatus.hidden = false;
-    setSyncStatus('synced');
   } else {
     signInBtn.hidden = false;
     userTrigger.hidden = true;
@@ -359,16 +360,14 @@ async function handleSignOut() {
         setSyncStatus('syncing');
         try {
           data = await migrateToCloud(data, selections);
-          await finalize(false);
         } catch (err) {
           console.error('Logout draft processing failed:', err);
-          setSyncStatus('error');
-          renderModal(t('logoutDraftTitle'), t('migrationError'), [
-            { label: t('confirm'), style: 'primary' }
-          ]);
         }
+        await finalize(false);
       },
-      null,
+      async () => {
+        await finalize(false);
+      },
       {
         titleKey: 'logoutDraftTitle',
         messageKey: 'logoutDraftMsg',
