@@ -672,13 +672,24 @@ export function renderMigrationModal(collections, onConfirm, onCancel, options =
   backdrop.className = 'modal-backdrop';
 
   const modal = document.createElement('div');
-  modal.className = 'modal';
+  modal.className = 'modal modal-migration';
 
   const h3 = document.createElement('h3');
   h3.textContent = t(titleKey);
 
   const p = document.createElement('p');
   p.textContent = t(messageKey, collections.length);
+
+  const hints = document.createElement('div');
+  hints.className = 'migration-hints';
+  const hintSync = document.createElement('p');
+  hintSync.textContent = t('migrationHintSync');
+  hints.appendChild(hintSync);
+  if (showKeepOption) {
+    const hintKeep = document.createElement('p');
+    hintKeep.textContent = t('migrationHintKeep');
+    hints.appendChild(hintKeep);
+  }
 
   let warningEl = null;
   if (warningKey) {
@@ -805,9 +816,9 @@ export function renderMigrationModal(collections, onConfirm, onCancel, options =
 
   actions.append(cancelBtn, confirmBtn);
   if (warningEl) {
-    modal.append(h3, p, warningEl, selectAllRow, list, actions);
+    modal.append(h3, p, hints, warningEl, selectAllRow, list, actions);
   } else {
-    modal.append(h3, p, selectAllRow, list, actions);
+    modal.append(h3, p, hints, selectAllRow, list, actions);
   }
   backdrop.appendChild(modal);
   backdrop.addEventListener('click', (e) => {

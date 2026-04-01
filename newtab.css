@@ -1657,27 +1657,39 @@ body.has-bg-image .collection-tabs > .tab-item {
 
 /* === Migration Modal Enhancements === */
 
+.modal-migration {
+  max-width: 460px;
+  min-width: 380px;
+}
+.modal-migration p {
+  margin-bottom: 4px;
+}
+
 .migration-list {
   list-style: none;
   padding: 0;
-  margin: 12px 0;
-  max-height: 200px;
+  margin: 8px 0 12px;
+  max-height: 240px;
   overflow-y: auto;
 }
 
 .migration-list li {
-  padding: 4px 0;
+  padding: 0;
   font-size: 13px;
   color: var(--text-primary, #333);
 }
 
 .migration-item {
-  display: flex;
-  justify-content: space-between;
+  display: grid;
+  grid-template-columns: 1fr auto;
   align-items: center;
-  gap: 12px;
-  padding: 8px 0 !important;
+  gap: 8px 16px;
+  padding: 10px 8px !important;
   border-bottom: 1px solid var(--border-color);
+  border-radius: 6px;
+}
+.migration-item:hover {
+  background: var(--bg-card, #f8f9fa);
 }
 
 .migration-item:last-child {
@@ -1689,20 +1701,21 @@ body.has-bg-image .collection-tabs > .tab-item {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+  font-weight: 500;
 }
 
 .migration-select-all {
   display: flex;
   justify-content: flex-end;
-  gap: 10px;
-  padding-bottom: 8px;
-  margin-bottom: 4px;
+  gap: 14px;
+  padding: 8px 8px 10px;
+  margin-bottom: 0;
   border-bottom: 1px solid var(--border-color);
 }
 
 .migration-item-controls {
   display: flex;
-  gap: 10px;
+  gap: 14px;
   flex-shrink: 0;
 }
 
@@ -1712,11 +1725,34 @@ body.has-bg-image .collection-tabs > .tab-item {
   gap: 6px;
   font-size: 12px;
   color: var(--text-muted);
+  cursor: pointer;
   user-select: none;
 }
 
 .migration-check input {
   accent-color: var(--accent);
+  width: 15px;
+  height: 15px;
+}
+
+.migration-hints {
+  margin: 12px 0 8px;
+  padding: 10px 12px;
+  font-size: 12px;
+  line-height: 1.6;
+  color: var(--text-secondary);
+  background: var(--bg-card, #f8f9fa);
+  border-radius: 8px;
+  border: 1px solid var(--border-color);
+}
+.migration-hints p {
+  margin: 4px 0;
+}
+.migration-hints p:first-child {
+  margin-top: 0;
+}
+.migration-hints p:last-child {
+  margin-bottom: 0;
 }
 
 .migration-warning {
