@@ -1,0 +1,563 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>TabZ — Visual Tab Manager for Chrome</title>
+  <meta name="description" content="A Chrome extension that replaces your new tab page with a visual tab manager. Organize tabs into collections, sync with Google Drive, and customize your workspace.">
+  <link rel="icon" type="image/png" href="../icons/icon48.png">
+  <style>
+    *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
+    :root {
+      --bg: #0f1117;
+      --bg-card: #1a1c25;
+      --bg-card-hover: #22252f;
+      --text: #e4e6ed;
+      --text-muted: #8b8fa3;
+      --accent: #7c83ff;
+      --accent-light: #a5aaff;
+      --radius: 12px;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.6;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    /* --- Nav --- */
+    nav {
+      position: fixed;
+      top: 0;
+      width: 100%;
+      padding: 16px 32px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      background: rgba(15, 17, 23, .85);
+      backdrop-filter: blur(12px);
+      z-index: 100;
+    }
+    .nav-brand {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-size: 20px;
+      font-weight: 700;
+      color: var(--text);
+      text-decoration: none;
+    }
+    .nav-brand img { width: 28px; height: 28px; }
+    .nav-links { display: flex; gap: 24px; align-items: center; }
+    .nav-links a {
+      color: var(--text-muted);
+      text-decoration: none;
+      font-size: 14px;
+      transition: color .2s;
+    }
+    .nav-links a:hover { color: var(--text); }
+    .lang-select {
+      background: var(--bg-card);
+      border: 1px solid #2e3140;
+      color: var(--text-muted);
+      padding: 4px 8px;
+      border-radius: 6px;
+      font-size: 13px;
+      cursor: pointer;
+      transition: border-color .2s, color .2s;
+      appearance: none;
+      -webkit-appearance: none;
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M0 0l5 6 5-6z' fill='%238b8fa3'/%3E%3C/svg%3E");
+      background-repeat: no-repeat;
+      background-position: right 8px center;
+      padding-right: 24px;
+    }
+    .lang-select:hover { border-color: var(--accent); color: var(--text); }
+    .lang-select option { background: var(--bg-card); color: var(--text); }
+
+    /* --- Hero --- */
+    .hero {
+      padding: 140px 32px 80px;
+      text-align: center;
+      max-width: 900px;
+      margin: 0 auto;
+    }
+    .hero h1 {
+      font-size: 52px;
+      font-weight: 800;
+      line-height: 1.15;
+      letter-spacing: -1px;
+      margin-bottom: 20px;
+    }
+    .hero h1 span { color: var(--accent); }
+    .hero p {
+      font-size: 18px;
+      color: var(--text-muted);
+      max-width: 600px;
+      margin: 0 auto 36px;
+    }
+    .hero-buttons {
+      display: flex;
+      gap: 14px;
+      justify-content: center;
+      flex-wrap: wrap;
+    }
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 12px 28px;
+      border-radius: 8px;
+      font-size: 15px;
+      font-weight: 600;
+      text-decoration: none;
+      transition: transform .15s, box-shadow .15s;
+    }
+    .btn:hover { transform: translateY(-2px); }
+    .btn-primary {
+      background: var(--accent);
+      color: #fff;
+    }
+    .btn-primary:hover { box-shadow: 0 6px 24px rgba(124, 131, 255, .35); }
+
+    .hero-screenshot {
+      margin-top: 56px;
+      border-radius: var(--radius);
+      border: 1px solid #2e3140;
+      overflow: hidden;
+      box-shadow: 0 24px 80px rgba(0, 0, 0, .5);
+    }
+    .hero-screenshot img {
+      width: 100%;
+      display: block;
+    }
+
+    /* --- Why --- */
+    .why {
+      padding: 80px 32px 0;
+      max-width: 900px;
+      margin: 0 auto;
+    }
+    .why h2 {
+      text-align: center;
+      font-size: 36px;
+      font-weight: 700;
+      margin-bottom: 12px;
+    }
+    .why > p.subtitle {
+      text-align: center;
+      color: var(--text-muted);
+      margin-bottom: 48px;
+      font-size: 16px;
+    }
+    .why-list {
+      display: flex;
+      flex-direction: column;
+      gap: 32px;
+    }
+    .why-item {
+      display: flex;
+      gap: 20px;
+      align-items: flex-start;
+    }
+    .why-icon {
+      flex-shrink: 0;
+      width: 48px;
+      height: 48px;
+      border-radius: 12px;
+      background: var(--bg-card);
+      border: 1px solid #2e3140;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .why-icon svg { width: 24px; height: 24px; stroke: var(--accent); fill: none; stroke-width: 1.75; stroke-linecap: round; stroke-linejoin: round; }
+    .why-item h3 {
+      font-size: 18px;
+      font-weight: 600;
+      margin-bottom: 6px;
+    }
+    .why-item p {
+      font-size: 15px;
+      color: var(--text-muted);
+      line-height: 1.6;
+    }
+
+    /* --- Features --- */
+    .features {
+      padding: 80px 32px;
+      max-width: 1080px;
+      margin: 0 auto;
+    }
+    .features h2 {
+      text-align: center;
+      font-size: 36px;
+      font-weight: 700;
+      margin-bottom: 12px;
+    }
+    .features > p {
+      text-align: center;
+      color: var(--text-muted);
+      margin-bottom: 48px;
+      font-size: 16px;
+    }
+    .features-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 20px;
+    }
+    .feature-card {
+      background: var(--bg-card);
+      border: 1px solid #2e3140;
+      border-radius: var(--radius);
+      padding: 28px 24px;
+      transition: border-color .2s, transform .2s;
+    }
+    .feature-card:hover {
+      border-color: var(--accent);
+      transform: translateY(-4px);
+    }
+    .feature-icon {
+      display: block;
+      margin-bottom: 14px;
+      width: 32px;
+      height: 32px;
+    }
+    .feature-icon svg { width: 32px; height: 32px; stroke: var(--accent); fill: none; stroke-width: 1.75; stroke-linecap: round; stroke-linejoin: round; }
+    .feature-card h3 {
+      font-size: 17px;
+      font-weight: 600;
+      margin-bottom: 8px;
+    }
+    .feature-card p {
+      font-size: 14px;
+      color: var(--text-muted);
+      line-height: 1.55;
+    }
+
+    /* --- Footer --- */
+    footer {
+      border-top: 1px solid #2e3140;
+      padding: 40px 32px;
+      text-align: center;
+      color: var(--text-muted);
+      font-size: 14px;
+    }
+    footer a {
+      color: var(--accent-light);
+      text-decoration: none;
+    }
+    footer a:hover { text-decoration: underline; }
+    .footer-links {
+      display: flex;
+      gap: 24px;
+      justify-content: center;
+      margin-bottom: 16px;
+    }
+
+    /* --- Responsive --- */
+    @media (max-width: 768px) {
+      nav { padding: 14px 20px; }
+      .hero { padding: 120px 20px 60px; }
+      .hero h1 { font-size: 32px; }
+      .hero p { font-size: 16px; }
+      .why { padding: 60px 20px 0; }
+      .why h2 { font-size: 28px; }
+      .features { padding: 60px 20px; }
+      .features h2 { font-size: 28px; }
+      .features-grid {
+        grid-template-columns: 1fr;
+        gap: 14px;
+      }
+      .hero-buttons { flex-direction: column; align-items: center; }
+      footer { padding: 32px 20px; }
+      .footer-links { flex-direction: column; gap: 12px; }
+    }
+
+    @media (min-width: 769px) and (max-width: 1024px) {
+      .features-grid {
+        grid-template-columns: repeat(2, 1fr);
+      }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Nav -->
+  <nav>
+    <a href="#" class="nav-brand">
+      <img src="../icons/icon48.png" alt="TabZ icon">
+      TabZ
+    </a>
+    <div class="nav-links">
+      <a href="#features" data-i18n="navFeatures">Features</a>
+      <a href="https://github.com/ianccy/TabZ" target="_blank" rel="noopener">GitHub</a>
+      <a href="#contact" data-i18n="navContact">Contact</a>
+      <select class="lang-select" id="lang-select">
+        <option value="en">English</option>
+        <option value="zh-TW">繁體中文</option>
+        <option value="ja">日本語</option>
+      </select>
+    </div>
+  </nav>
+
+  <!-- Hero -->
+  <section class="hero">
+    <h1 data-i18n-html="heroTitle">Your new tab,<br><span>organized visually.</span></h1>
+    <p data-i18n="heroDesc">A Chrome extension that turns your new tab into a powerful visual workspace. Local bookmarks, Google Drive sync, and linked bookmark folders &mdash; all in one page.</p>
+    <div class="hero-buttons">
+      <a href="https://github.com/ianccy/TabZ" class="btn btn-primary" target="_blank" rel="noopener">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 19c-5 1.5-5-2.5-7-3m14 6v-3.87a3.37 3.37 0 0 0-.94-2.61c3.14-.35 6.44-1.54 6.44-7A5.44 5.44 0 0 0 20 4.77 5.07 5.07 0 0 0 19.91 1S18.73.65 16 2.48a13.38 13.38 0 0 0-7 0C6.27.65 5.09 1 5.09 1A5.07 5.07 0 0 0 5 4.77a5.44 5.44 0 0 0-1.5 3.78c0 5.42 3.3 6.61 6.44 7A3.37 3.37 0 0 0 9 18.13V22"/></svg>
+        <span data-i18n="heroBtn">View on GitHub</span>
+      </a>
+    </div>
+    <div class="hero-screenshot">
+      <img src="../images/demo.png" alt="TabZ screenshot showing collections and open tabs">
+    </div>
+  </section>
+
+  <!-- Why TabZ -->
+  <section class="why" id="why">
+    <h2 data-i18n="whyTitle">One interface, three ways to manage tabs</h2>
+    <p class="subtitle" data-i18n="whySubtitle">Local bookmarks, cloud storage, linked folders &mdash; all unified in your new tab page.</p>
+    <div class="why-list">
+      <div class="why-item">
+        <div class="why-icon"><svg viewBox="0 0 24 24"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/></svg></div>
+        <div>
+          <h3 data-i18n="why1Title">Local bookmarks as collections</h3>
+          <p data-i18n="why1Desc">Your collections are stored as Chrome bookmarks &mdash; no proprietary format, no lock-in. Even without signing in, everything is saved and accessible from Chrome's built-in bookmark manager.</p>
+        </div>
+      </div>
+      <div class="why-item">
+        <div class="why-icon"><svg viewBox="0 0 24 24"><path d="M18 10h-1.26A8 8 0 1 0 9 20h9a5 5 0 0 0 0-10z"/></svg></div>
+        <div>
+          <h3 data-i18n="why2Title">Google Drive cloud sync</h3>
+          <p data-i18n="why2Desc">Sign in with Google to sync collections across devices. Data is stored as a JSON file in your own Google Drive &mdash; no third-party servers, no subscription. You own your data, always.</p>
+        </div>
+      </div>
+      <div class="why-item">
+        <div class="why-icon"><svg viewBox="0 0 24 24"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg></div>
+        <div>
+          <h3 data-i18n="why3Title">Link existing bookmark folders</h3>
+          <p data-i18n="why3Desc">Already have bookmark folders organized your way? Link them directly as live collections. Edits sync both ways &mdash; no migration needed, no duplication. Your bookmarks become visual and manageable.</p>
+        </div>
+      </div>
+      <div class="why-item">
+        <div class="why-icon"><svg viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg></div>
+        <div>
+          <h3 data-i18n="why4Title">Mix and match freely</h3>
+          <p data-i18n="why4Desc">Use all three methods together. Keep some collections local, sync others to the cloud, and link existing bookmark folders &mdash; all visible side by side on the same page. No other tab manager gives you this flexibility.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Features -->
+  <section class="features" id="features">
+    <h2 data-i18n="featuresTitle">Features</h2>
+    <p data-i18n="featuresSubtitle">Everything you need to keep your browser organized.</p>
+    <div class="features-grid">
+      <div class="feature-card">
+        <span class="feature-icon"><svg viewBox="0 0 24 24"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg></span>
+        <h3 data-i18n="f1Title">Collections</h3>
+        <p data-i18n="f1Desc">Group tabs into named collections with custom colors and emoji icons. Collapse or expand groups to keep your workspace tidy. One click to open all tabs in a collection.</p>
+      </div>
+      <div class="feature-card">
+        <span class="feature-icon"><svg viewBox="0 0 24 24"><polyline points="5 9 2 12 5 15"/><polyline points="9 5 12 2 15 5"/><polyline points="15 19 12 22 9 19"/><polyline points="19 9 22 12 19 15"/><line x1="2" y1="12" x2="22" y2="12"/><line x1="12" y1="2" x2="12" y2="22"/></svg></span>
+        <h3 data-i18n="f2Title">Drag &amp; Drop</h3>
+        <p data-i18n="f2Desc">Drag open tabs from the sidebar into any collection. Reorder collections and tabs freely. Move tabs between collections with a simple drag.</p>
+      </div>
+      <div class="feature-card">
+        <span class="feature-icon"><svg viewBox="0 0 24 24"><path d="M18 10h-1.26A8 8 0 1 0 9 20h9a5 5 0 0 0 0-10z"/></svg></span>
+        <h3 data-i18n="f3Title">Google Drive Sync</h3>
+        <p data-i18n="f3Desc">Sign in with Google to sync collections across devices. Data is stored as a file in your own Google Drive. Switch between accounts with automatic draft handling.</p>
+      </div>
+      <div class="feature-card">
+        <span class="feature-icon"><svg viewBox="0 0 24 24"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/></svg></span>
+        <h3 data-i18n="f4Title">Linked Bookmarks</h3>
+        <p data-i18n="f4Desc">Turn any Chrome bookmark folder into a live collection. Changes flow both ways &mdash; edit in TabZ or in Chrome's bookmark manager, both stay in sync.</p>
+      </div>
+      <div class="feature-card">
+        <span class="feature-icon"><svg viewBox="0 0 24 24"><circle cx="13.5" cy="6.5" r="2.5"/><circle cx="17.5" cy="10.5" r="2.5"/><circle cx="8.5" cy="7.5" r="2.5"/><circle cx="6.5" cy="12.5" r="2.5"/><path d="M12 2C6.5 2 2 6.5 2 12s4.5 10 10 10c.93 0 1.5-.67 1.5-1.5 0-.39-.15-.74-.39-1.04-.23-.29-.38-.63-.38-1.04 0-.83.67-1.5 1.5-1.5H16c3.31 0 6-2.69 6-6 0-5.17-4.49-9-10-9z"/></svg></span>
+        <h3 data-i18n="f5Title">Customization</h3>
+        <p data-i18n="f5Desc">Dark and light themes. Custom background colors or images. Choose from 32 collection colors and 19 emoji icons to make your workspace truly yours.</p>
+      </div>
+      <div class="feature-card">
+        <span class="feature-icon"><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg></span>
+        <h3 data-i18n="f6Title">Search &amp; Export</h3>
+        <p data-i18n="f6Desc">Search across all collections and open tabs instantly. Import and export as JSON for backup. Export any collection as a Chrome bookmark folder.</p>
+      </div>
+      <div class="feature-card">
+        <span class="feature-icon"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/></svg></span>
+        <h3 data-i18n="f7Title">Quick Add from Popup</h3>
+        <p data-i18n="f7Desc">Save the current tab to any collection from the extension popup &mdash; without leaving the page you're on. One click, done.</p>
+      </div>
+      <div class="feature-card">
+        <span class="feature-icon"><svg viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg></span>
+        <h3 data-i18n="f8Title">Local Drafts</h3>
+        <p data-i18n="f8Desc">Unsaved collections stay as local drafts. Sign in to Google and choose which to upload &mdash; nothing syncs until you say so.</p>
+      </div>
+      <div class="feature-card">
+        <span class="feature-icon"><svg viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="9" y1="3" x2="9" y2="21"/></svg></span>
+        <h3 data-i18n="f9Title">Open Tabs Sidebar</h3>
+        <p data-i18n="f9Desc">See all open browser tabs in a real-time sidebar. Close tabs, drag them into collections, or click to switch &mdash; all from your new tab page.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- Footer -->
+  <footer id="contact">
+    <div class="footer-links">
+      <a href="mailto:chu2815@hotmail.com">chu2815@hotmail.com</a>
+      <a href="https://github.com/ianccy/TabZ" target="_blank" rel="noopener">GitHub</a>
+    </div>
+    <p data-i18n-html="footerLicense">TabZ &copy; 2025. Licensed under <a href="https://creativecommons.org/licenses/by-nd/4.0/" target="_blank" rel="noopener">CC BY-ND 4.0</a>.</p>
+  </footer>
+
+  <script>
+    const i18n = {
+      en: {
+        navFeatures: 'Features',
+        navContact: 'Contact',
+        heroTitle: 'Your new tab,<br><span>organized visually.</span>',
+        heroDesc: 'A Chrome extension that turns your new tab into a powerful visual workspace. Local bookmarks, Google Drive sync, and linked bookmark folders \u2014 all in one page.',
+        heroBtn: 'View on GitHub',
+        whyTitle: 'One interface, three ways to manage tabs',
+        whySubtitle: 'Local bookmarks, cloud storage, linked folders \u2014 all unified in your new tab page.',
+        why1Title: 'Local bookmarks as collections',
+        why1Desc: 'Your collections are stored as Chrome bookmarks \u2014 no proprietary format, no lock-in. Even without signing in, everything is saved and accessible from Chrome\'s built-in bookmark manager.',
+        why2Title: 'Google Drive cloud sync',
+        why2Desc: 'Sign in with Google to sync collections across devices. Data is stored as a JSON file in your own Google Drive \u2014 no third-party servers, no subscription. You own your data, always.',
+        why3Title: 'Link existing bookmark folders',
+        why3Desc: 'Already have bookmark folders organized your way? Link them directly as live collections. Edits sync both ways \u2014 no migration needed, no duplication. Your bookmarks become visual and manageable.',
+        why4Title: 'Mix and match freely',
+        why4Desc: 'Use all three methods together. Keep some collections local, sync others to the cloud, and link existing bookmark folders \u2014 all visible side by side on the same page. No other tab manager gives you this flexibility.',
+        featuresTitle: 'Features',
+        featuresSubtitle: 'Everything you need to keep your browser organized.',
+        f1Title: 'Collections',
+        f1Desc: 'Group tabs into named collections with custom colors and emoji icons. Collapse or expand groups to keep your workspace tidy. One click to open all tabs in a collection.',
+        f2Title: 'Drag & Drop',
+        f2Desc: 'Drag open tabs from the sidebar into any collection. Reorder collections and tabs freely. Move tabs between collections with a simple drag.',
+        f3Title: 'Google Drive Sync',
+        f3Desc: 'Sign in with Google to sync collections across devices. Data is stored as a file in your own Google Drive. Switch between accounts with automatic draft handling.',
+        f4Title: 'Linked Bookmarks',
+        f4Desc: 'Turn any Chrome bookmark folder into a live collection. Changes flow both ways \u2014 edit in TabZ or in Chrome\'s bookmark manager, both stay in sync.',
+        f5Title: 'Customization',
+        f5Desc: 'Dark and light themes. Custom background colors or images. Choose from 32 collection colors and 19 emoji icons to make your workspace truly yours.',
+        f6Title: 'Search & Export',
+        f6Desc: 'Search across all collections and open tabs instantly. Import and export as JSON for backup. Export any collection as a Chrome bookmark folder.',
+        f7Title: 'Quick Add from Popup',
+        f7Desc: 'Save the current tab to any collection from the extension popup \u2014 without leaving the page you\'re on. One click, done.',
+        f8Title: 'Local Drafts',
+        f8Desc: 'Unsaved collections stay as local drafts. Sign in to Google and choose which to upload \u2014 nothing syncs until you say so.',
+        f9Title: 'Open Tabs Sidebar',
+        f9Desc: 'See all open browser tabs in a real-time sidebar. Close tabs, drag them into collections, or click to switch \u2014 all from your new tab page.',
+        footerLicense: 'TabZ &copy; 2025. Licensed under <a href="https://creativecommons.org/licenses/by-nd/4.0/" target="_blank" rel="noopener">CC BY-ND 4.0</a>.',
+      },
+      'zh-TW': {
+        navFeatures: '功能介紹',
+        navContact: '聯絡我們',
+        heroTitle: '你的新分頁，<br><span>視覺化管理。</span>',
+        heroDesc: '一款 Chrome 擴充功能，將新分頁變成強大的視覺化工作空間。本機書籤、Google 雲端同步、連結既有書籤資料夾 \u2014 全部整合在同一頁面。',
+        heroBtn: '前往 GitHub',
+        whyTitle: '一個介面，三種管理方式',
+        whySubtitle: '本機書籤、雲端儲存、連結資料夾 \u2014 統一呈現在你的新分頁。',
+        why1Title: '本機書籤即收藏',
+        why1Desc: '收藏直接儲存為 Chrome 書籤 \u2014 沒有專有格式、沒有綁定。即使不登入，所有資料都已儲存，並可從 Chrome 內建的書籤管理員存取。',
+        why2Title: 'Google 雲端同步',
+        why2Desc: '登入 Google 即可跨裝置同步收藏。資料以 JSON 檔案儲存在你自己的 Google 雲端硬碟 \u2014 沒有第三方伺服器、不需訂閱。資料永遠屬於你。',
+        why3Title: '連結既有書籤資料夾',
+        why3Desc: '已經有整理好的書籤資料夾？直接連結為即時收藏。雙向同步 \u2014 不需搬移、不會重複。讓書籤變得直覺好管理。',
+        why4Title: '自由混搭',
+        why4Desc: '三種方式可以同時使用。部分收藏留在本機、部分同步雲端、再連結既有的書籤資料夾 \u2014 全部並排顯示在同一頁面。沒有其他分頁管理工具有這種彈性。',
+        featuresTitle: '功能介紹',
+        featuresSubtitle: '管理瀏覽器所需的一切功能。',
+        f1Title: '分類收藏',
+        f1Desc: '將分頁分組收藏，支援自訂顏色與 emoji 圖示。可收合或展開群組，一鍵開啟收藏中的所有分頁。',
+        f2Title: '拖放排序',
+        f2Desc: '從側邊欄拖曳開啟的分頁到任何收藏。自由重新排列收藏與分頁，輕鬆在收藏間移動分頁。',
+        f3Title: 'Google 雲端同步',
+        f3Desc: '登入 Google 帳號即可跨裝置同步收藏。資料以檔案形式儲存在你自己的 Google 雲端硬碟，支援帳號切換與草稿處理。',
+        f4Title: '連結書籤資料夾',
+        f4Desc: '將任何 Chrome 書籤資料夾轉為即時收藏。雙向同步 \u2014 在 TabZ 或 Chrome 書籤管理員編輯，兩邊都會更新。',
+        f5Title: '個人化自訂',
+        f5Desc: '深色與淺色主題切換。自訂背景顏色或圖片。32 種收藏顏色與 19 個 emoji 圖示，打造專屬工作空間。',
+        f6Title: '搜尋與匯出',
+        f6Desc: '即時搜尋所有收藏與開啟的分頁。支援 JSON 匯入匯出備份，也可將收藏匯出為 Chrome 書籤資料夾。',
+        f7Title: '快速收藏（Popup）',
+        f7Desc: '透過擴充功能彈出視窗，一鍵將當前分頁加入任何收藏 \u2014 不需離開正在瀏覽的頁面。',
+        f8Title: '本機草稿',
+        f8Desc: '未同步的收藏保留為本機草稿。登入 Google 後可選擇要上傳哪些 \u2014 在你決定之前不會同步。',
+        f9Title: '開啟分頁側邊欄',
+        f9Desc: '即時顯示所有開啟的瀏覽器分頁。關閉分頁、拖曳到收藏、或點擊切換 \u2014 全都在新分頁頁面完成。',
+        footerLicense: 'TabZ &copy; 2025. 授權條款：<a href="https://creativecommons.org/licenses/by-nd/4.0/" target="_blank" rel="noopener">CC BY-ND 4.0</a>。',
+      },
+      ja: {
+        navFeatures: '機能紹介',
+        navContact: 'お問い合わせ',
+        heroTitle: '新しいタブを、<br><span>ビジュアルに整理。</span>',
+        heroDesc: 'Chrome 拡張機能で、新しいタブをパワフルなビジュアルワークスペースに。ローカルブックマーク、Google ドライブ同期、既存フォルダの連携 \u2014 すべてを一つのページに。',
+        heroBtn: 'GitHub で見る',
+        whyTitle: '1つのインターフェース、3つの管理方法',
+        whySubtitle: 'ローカルブックマーク、クラウドストレージ、リンクフォルダ \u2014 新しいタブページに統合。',
+        why1Title: 'ローカルブックマークがコレクションに',
+        why1Desc: 'コレクションは Chrome のブックマークとして保存 \u2014 独自フォーマットなし、ロックインなし。ログインしなくても、すべてのデータは Chrome の内蔵ブックマークマネージャーから保存・アクセスできます。',
+        why2Title: 'Google ドライブ クラウド同期',
+        why2Desc: 'Google にログインしてデバイス間でコレクションを同期。データはあなた自身の Google ドライブに JSON ファイルとして保存 \u2014 サードパーティサーバーなし、サブスクリプション不要。',
+        why3Title: '既存のブックマークフォルダを連携',
+        why3Desc: 'すでに整理されたブックマークフォルダがありますか？直接ライブコレクションとしてリンク。双方向同期 \u2014 移行不要、重複なし。ブックマークが直感的に管理できます。',
+        why4Title: '自由に組み合わせ',
+        why4Desc: '3つの方法を同時に使用可能。一部をローカルに、一部をクラウドに同期し、既存のブックマークフォルダもリンク \u2014 すべてが同じページに並んで表示されます。この柔軟性は他にありません。',
+        featuresTitle: '機能紹介',
+        featuresSubtitle: 'ブラウザを整理するために必要なすべての機能。',
+        f1Title: 'コレクション',
+        f1Desc: 'タブを名前付きコレクションにグループ化し、カスタムカラーと絵文字アイコンで整理。グループの折りたたみ・展開、ワンクリックで全タブを開けます。',
+        f2Title: 'ドラッグ＆ドロップ',
+        f2Desc: 'サイドバーから開いているタブを任意のコレクションにドラッグ。コレクションとタブを自由に並べ替え、簡単に移動できます。',
+        f3Title: 'Google ドライブ同期',
+        f3Desc: 'Google アカウントでログインしてデバイス間でコレクションを同期。データはあなた自身の Google ドライブにファイルとして保存されます。',
+        f4Title: 'ブックマーク連携',
+        f4Desc: 'Chrome のブックマークフォルダをライブコレクションに変換。双方向同期 \u2014 TabZ でも Chrome のブックマークマネージャーでも編集が反映されます。',
+        f5Title: 'カスタマイズ',
+        f5Desc: 'ダーク・ライトテーマの切り替え。背景色や画像のカスタマイズ。32 色のコレクションカラーと 19 個の絵文字アイコンであなただけのワークスペースに。',
+        f6Title: '検索とエクスポート',
+        f6Desc: 'すべてのコレクションと開いているタブを即座に検索。JSON でのインポート・エクスポートによるバックアップ。コレクションをブックマークフォルダとしてエクスポートも可能。',
+        f7Title: 'ポップアップからクイック追加',
+        f7Desc: '拡張機能のポップアップから、今見ているページを離れずにワンクリックでコレクションに追加。',
+        f8Title: 'ローカル草稿',
+        f8Desc: '未同期のコレクションはローカル草稿として保持。Google にログイン後、アップロードするものを選択 \u2014 あなたが決めるまで同期されません。',
+        f9Title: '開いているタブのサイドバー',
+        f9Desc: '開いているすべてのブラウザタブをリアルタイムでサイドバーに表示。タブを閉じる、コレクションにドラッグ、クリックで切り替え \u2014 すべて新しいタブページから。',
+        footerLicense: 'TabZ &copy; 2025. ライセンス：<a href="https://creativecommons.org/licenses/by-nd/4.0/" target="_blank" rel="noopener">CC BY-ND 4.0</a>',
+      }
+    };
+
+    let currentLang = localStorage.getItem('tabz-site-lang') || 'en';
+    const selectEl = document.getElementById('lang-select');
+
+    function applyLang(lang) {
+      currentLang = lang;
+      localStorage.setItem('tabz-site-lang', lang);
+      document.documentElement.lang = lang;
+      selectEl.value = lang;
+
+      const strings = i18n[lang];
+      document.querySelectorAll('[data-i18n]').forEach(el => {
+        const key = el.dataset.i18n;
+        if (strings[key]) el.textContent = strings[key];
+      });
+      document.querySelectorAll('[data-i18n-html]').forEach(el => {
+        const key = el.dataset.i18nHtml;
+        if (strings[key]) el.innerHTML = strings[key];
+      });
+    }
+
+    selectEl.addEventListener('change', (e) => applyLang(e.target.value));
+    applyLang(currentLang);
+  </script>
+
+</body>
+</html>

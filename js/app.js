@@ -8,14 +8,21 @@ import {
   getOrderedCollections,
   validateImportData, importData, exportData,
   linkFolder, unlinkFolder,
+  migrateToCloud, wasMigrationAsked, setMigrationAsked, setMigrationPending,
+  handleUserLogout,
+  exportCollectionToBookmarkFolder,
+  backgroundSync,
+  onPushStatusChange,
   DEFAULT_COLORS, DEFAULT_ICONS
 } from './storage.js';
 
 import {
   renderOpenTabs, renderCollections, renderAddDropdown, closeDropdown,
   renderContextMenu, renderColorPicker, renderIconPicker, renderModal,
-  renderFolderPicker, flashElement
+  renderFolderPicker, flashElement, renderMigrationModal
 } from './render.js';
+
+import { signIn, signOut, switchAccount, getStatus, onStatusChange } from './auth.js';
 
 import { initDragDrop } from './dragdrop.js';
 
@@ -26,6 +33,7 @@ import { getBookmarkTree, getRootFolderId } from './bookmarks.js';
 let data = { collections: [], collectionOrder: [] };
 let openTabs = [];
 let searchQuery = '';
+let lastSyncTime = null;
 
 // === Background Customization ===
 
@@ -171,18 +179,20 @@ function toggleTheme() {
 function applyStaticI18n() {
   const searchInput = document.getElementById('search-input');
   if (searchInput) searchInput.placeholder = t('searchPlaceholder');
-  const btnImport = document.getElementById('btn-import');
-  if (btnImport) btnImport.title = t('import');
-  const btnExport = document.getElementById('btn-export');
-  if (btnExport) btnExport.title = t('export');
+  const importLabel = document.getElementById('settings-import-label');
+  if (importLabel) importLabel.textContent = t('import');
+  const exportLabel = document.getElementById('settings-export-label');
+  if (exportLabel) exportLabel.textContent = t('export');
   const openTabsLabel = document.querySelector('#open-tabs-section .section-label') || document.querySelector('.sidebar-label');
   if (openTabsLabel) openTabsLabel.textContent = t('openTabsLabel');
   const addBtn = document.getElementById('btn-add-collection');
   if (addBtn) addBtn.textContent = t('addCollection');
   const linkBtn = document.getElementById('btn-link-folder');
   if (linkBtn) linkBtn.textContent = t('linkFolder');
-  const bgSettingsBtn = document.getElementById('btn-bg-settings');
-  if (bgSettingsBtn) bgSettingsBtn.title = t('bgSettings');
+  const bgLabel = document.getElementById('settings-bg-label');
+  if (bgLabel) bgLabel.textContent = t('bgSettings');
+  const langLabel = document.getElementById('settings-lang-label');
+  if (langLabel) langLabel.textContent = t('language');
   const bgTitle = document.getElementById('bg-settings-title');
   if (bgTitle) bgTitle.textContent = t('bgSettings');
   const bgColorLabel = document.getElementById('bg-color-label');
@@ -197,6 +207,293 @@ function applyStaticI18n() {
   if (bgResetBtn) bgResetBtn.textContent = t('bgReset');
   const bgRemoveBtn = document.getElementById('bg-remove-image-btn');
   if (bgRemoveBtn) bgRemoveBtn.title = t('bgRemoveImage');
+  const signInBtn = document.getElementById('btn-sign-in');
+  if (signInBtn) signInBtn.textContent = t('signIn');
+  const signOutBtn = document.getElementById('btn-sign-out');
+  if (signOutBtn) signOutBtn.textContent = t('signOut');
+  const switchBtn = document.getElementById('btn-switch-account');
+  if (switchBtn) switchBtn.textContent = t('switchAccount');
+}
+
+// === Auth UI ===
+
+async function initAuth() {
+  const status = await getStatus();
+  updateAuthUI(status);
+  onStatusChange(updateAuthUI);
+  onPushStatusChange(setSyncStatus);
+}
+
+function updateAuthUI(status) {
+  const signInBtn = document.getElementById('btn-sign-in');
+  const userTrigger = document.getElementById('user-menu-trigger');
+  const avatar = document.getElementById('user-avatar');
+  const syncStatus = document.getElementById('sync-status');
+
+  if (status.isSignedIn) {
+    signInBtn.hidden = true;
+    userTrigger.hidden = false;
+    avatar.src = status.user.avatar || '';
+    syncStatus.hidden = false;
+  } else {
+    signInBtn.hidden = false;
+    userTrigger.hidden = true;
+    syncStatus.hidden = true;
+  }
+}
+
+function setSyncStatus(state) {
+  const indicator = document.getElementById('sync-indicator');
+  const text = document.getElementById('sync-text');
+  const container = document.getElementById('sync-status');
+
+  indicator.className = 'sync-indicator ' + state;
+  container.style.cursor = '';
+  container.onclick = null;
+
+  if (state === 'synced') {
+    text.textContent = t('syncStatus');
+    lastSyncTime = Date.now();
+  } else if (state === 'syncing') {
+    text.textContent = t('syncing');
+  } else if (state === 'error') {
+    text.textContent = t('syncFailed');
+    container.style.cursor = 'pointer';
+    container.onclick = () => triggerSync();
+  }
+}
+
+function getLastSyncDisplay() {
+  if (!lastSyncTime) return '';
+  const diff = Math.floor((Date.now() - lastSyncTime) / 60000);
+  if (diff < 1) return t('justNow');
+  return t('minutesAgo', diff);
+}
+
+async function handleSignIn() {
+  const signInBtn = document.getElementById('btn-sign-in');
+  if (signInBtn) {
+    signInBtn.disabled = true;
+    signInBtn.textContent = t('signInLoading');
+  }
+
+  try {
+    await signIn();
+
+    // Show explicit loading UI for post-login sync.
+    const syncStatusEl = document.getElementById('sync-status');
+    if (syncStatusEl) syncStatusEl.hidden = false;
+    setSyncStatus('syncing');
+
+    data = await loadData();
+    renderAll();
+
+    await triggerSync();
+
+    const asked = await wasMigrationAsked();
+    if (!asked) {
+      const localCollections = data.collections.filter(c => !c.linked && c.status === 'local');
+      if (localCollections.length > 0) {
+        await setMigrationPending();
+        renderMigrationModal(
+          localCollections,
+          async (selections) => {
+            setSyncStatus('syncing');
+            try {
+              data = await migrateToCloud(data, selections);
+              renderAll();
+              setSyncStatus('synced');
+            } catch (err) {
+              console.error('Migration failed:', err);
+              setSyncStatus('error');
+              renderModal(t('migrationTitle'), t('migrationError'), [
+                { label: t('confirm'), style: 'primary' }
+              ]);
+            }
+          },
+          async () => {
+            await setMigrationAsked('cancelled');
+          },
+          { showKeepOption: false }
+        );
+      } else {
+        await chrome.storage.local.set({ migrationAsked: true, migrationDecision: 'confirmed' });
+      }
+    }
+  } catch (err) {
+    console.error('Sign in failed:', err);
+    const msg = String(err?.message || err || '');
+    if (/bad client id/i.test(msg)) {
+      const manifest = chrome.runtime.getManifest();
+      const extId = chrome.runtime.id;
+      const clientId = manifest?.oauth2?.client_id || '';
+      renderModal(
+        t('oauthClientIdErrorTitle'),
+        t('oauthClientIdErrorMsg', extId, clientId),
+        [{ label: t('confirm'), style: 'primary' }]
+      );
+      return;
+    }
+  } finally {
+    if (signInBtn) {
+      signInBtn.disabled = false;
+      signInBtn.textContent = t('signIn');
+    }
+  }
+}
+
+async function handleSignOut() {
+  const draftCollections = data.collections.filter(c => !c.linked && c.status === 'local');
+  const draftCount = draftCollections.length;
+  const finalize = async (deleteDrafts) => {
+    await handleUserLogout({ deleteDrafts });
+    await signOut();
+    data = await loadData();
+    renderAll();
+    document.getElementById('user-dropdown').hidden = true;
+  };
+
+  if (draftCount > 0) {
+    renderMigrationModal(
+      draftCollections,
+      async (selections) => {
+        setSyncStatus('syncing');
+        try {
+          data = await migrateToCloud(data, selections);
+        } catch (err) {
+          console.error('Logout draft processing failed:', err);
+        }
+        await finalize(false);
+      },
+      async () => {
+        await finalize(false);
+      },
+      {
+        titleKey: 'logoutDraftTitle',
+        messageKey: 'logoutDraftMsg',
+        confirmKey: 'signOut',
+        cancelKey: 'cancel',
+        showKeepOption: true
+      }
+    );
+    return;
+  }
+
+  await finalize(false);
+}
+
+async function handleSwitchAccount() {
+  // First handle drafts for current account (same as sign-out)
+  const draftCollections = data.collections.filter(c => !c.linked && c.status === 'local');
+
+  const doSwitch = async () => {
+    document.getElementById('user-dropdown').hidden = true;
+    await handleUserLogout({ deleteDrafts: false });
+
+    try {
+      await switchAccount();
+
+      const syncStatusEl = document.getElementById('sync-status');
+      if (syncStatusEl) syncStatusEl.hidden = false;
+      setSyncStatus('syncing');
+
+      data = await loadData();
+      renderAll();
+      await triggerSync();
+
+      const asked = await wasMigrationAsked();
+      if (!asked) {
+        const localCollections = data.collections.filter(c => !c.linked && c.status === 'local');
+        if (localCollections.length > 0) {
+          await setMigrationPending();
+          renderMigrationModal(
+            localCollections,
+            async (selections) => {
+              setSyncStatus('syncing');
+              try {
+                data = await migrateToCloud(data, selections);
+                renderAll();
+                setSyncStatus('synced');
+              } catch (err) {
+                console.error('Migration failed:', err);
+                setSyncStatus('error');
+              }
+            },
+            async () => {
+              await setMigrationAsked('cancelled');
+            },
+            { showKeepOption: false }
+          );
+        } else {
+          await chrome.storage.local.set({ migrationAsked: true, migrationDecision: 'confirmed' });
+        }
+      }
+    } catch (err) {
+      console.error('Switch account failed:', err);
+      data = await loadData();
+      renderAll();
+    }
+  };
+
+  if (draftCollections.length > 0) {
+    renderMigrationModal(
+      draftCollections,
+      async (selections) => {
+        setSyncStatus('syncing');
+        try {
+          data = await migrateToCloud(data, selections);
+          await doSwitch();
+        } catch (err) {
+          console.error('Draft processing failed:', err);
+          setSyncStatus('error');
+        }
+      },
+      null,
+      {
+        titleKey: 'logoutDraftTitle',
+        messageKey: 'logoutDraftMsg',
+        confirmKey: 'switchAccount',
+        cancelKey: 'cancel',
+        showKeepOption: true
+      }
+    );
+    return;
+  }
+
+  await doSwitch();
+}
+
+async function triggerSync() {
+  const status = await getStatus();
+  if (!status.isSignedIn) return;
+
+  setSyncStatus('syncing');
+  try {
+    await backgroundSync(data, async () => {
+      data = await loadData();
+      renderAll();
+    });
+    setSyncStatus('synced');
+  } catch {
+    setSyncStatus('error');
+  }
+}
+
+async function handleExportCollectionToBookmarkFolder(col) {
+  const count = await exportCollectionToBookmarkFolder(col);
+  showToast(t('bookmarkFolderCreated', col.name, count));
+}
+
+function showToast(msg) {
+  let toast = document.querySelector('.toast');
+  if (!toast) {
+    toast = document.createElement('div');
+    toast.className = 'toast';
+    document.body.appendChild(toast);
+  }
+  toast.textContent = msg;
+  toast.classList.add('visible');
+  setTimeout(() => toast.classList.remove('visible'), 2500);
 }
 
 function setupLangSelector() {
@@ -235,6 +532,9 @@ async function init() {
     onMoveTab: handleMoveTab,
     onDropOpenTab: handleDropOpenTab
   });
+
+  await initAuth();
+  triggerSync();
 
   chrome.runtime.onMessage.addListener((msg) => {
     if (msg.type === 'tabs-updated') refreshOpenTabs().then(renderOpenTabsUI);
@@ -286,7 +586,7 @@ function renderCollectionsUI() {
       onToggleCollapse: handleToggleCollapse,
       onRemoveTab: handleRemoveTab,
       onRenameClick: handleRenameClick,
-      onRenameTab: handleRenameTab
+      onRenameTab: handleRenameTab,
     }
   );
 }
@@ -323,7 +623,10 @@ function startInlineRename(card, collectionId) {
   input.addEventListener('click', (e) => e.stopPropagation());
   input.addEventListener('mousedown', (e) => e.stopPropagation());
 
+  let committed = false;
   const commit = async () => {
+    if (committed) return;
+    committed = true;
     const newName = input.value.trim() || currentName;
     await renameCollection(data, collectionId, newName);
     renderCollectionsUI();
@@ -331,10 +634,15 @@ function startInlineRename(card, collectionId) {
 
   input.addEventListener('blur', commit);
   input.addEventListener('keydown', (e) => {
-    if (e.key === 'Enter') input.blur();
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      commit();
+    }
     if (e.key === 'Escape') {
-      input.value = currentName;
-      input.blur();
+      e.preventDefault();
+      if (committed) return;
+      committed = true;
+      renderCollectionsUI();
     }
   });
 }
@@ -357,7 +665,10 @@ function handleRenameTab(collectionId, tabId, titleEl) {
   input.addEventListener('click', (e) => e.stopPropagation());
   input.addEventListener('mousedown', (e) => e.stopPropagation());
 
+  let committed = false;
   const commit = async () => {
+    if (committed) return;
+    committed = true;
     const newName = input.value.trim() || currentName;
     if (newName !== currentName) {
       await renameTab(data, collectionId, tabId, newName);
@@ -367,10 +678,15 @@ function handleRenameTab(collectionId, tabId, titleEl) {
 
   input.addEventListener('blur', commit);
   input.addEventListener('keydown', (e) => {
-    if (e.key === 'Enter') input.blur();
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      commit();
+    }
     if (e.key === 'Escape') {
-      input.value = currentName;
-      input.blur();
+      e.preventDefault();
+      if (committed) return;
+      committed = true;
+      renderCollectionsUI();
     }
   });
 }
@@ -449,8 +765,33 @@ function handleMenuClick(e, col) {
 
   items.push(
     { label: t('changeColor'), action: () => showColorPicker(col) },
-    { label: t('changeIcon'), action: () => showIconPicker(col) }
+    { label: t('changeIcon'), action: () => showIconPicker(col) },
+    { label: t('exportToBookmarkFolder'), action: () => handleExportCollectionToBookmarkFolder(col) }
   );
+
+  if (col.status === 'local' && !col.linked) {
+    items.push({
+      label: t('uploadToCloud'),
+      action: () => {
+        renderMigrationModal(
+          [col],
+          async (selections) => {
+            setSyncStatus('syncing');
+            try {
+              data = await migrateToCloud(data, selections);
+              renderAll();
+              setSyncStatus('synced');
+            } catch (err) {
+              console.error('Upload to cloud failed:', err);
+              setSyncStatus('error');
+            }
+          },
+          null,
+          { showKeepOption: true }
+        );
+      }
+    });
+  }
 
   if (col.linked) {
     items.push({
@@ -502,22 +843,14 @@ function handleMenuClick(e, col) {
 }
 
 function showColorPicker(col) {
-  const card = document.querySelector(`.collection-card[data-collection-id="${col.id}"]`);
-  if (!card) return;
-  const body = card.querySelector('.collection-body');
-  body.classList.remove('collapsed');
-  renderColorPicker(body, col.color, DEFAULT_COLORS, async (color) => {
+  renderColorPicker(null, col.color, DEFAULT_COLORS, async (color) => {
     await updateCollectionColor(data, col.id, color);
     renderCollectionsUI();
   });
 }
 
 function showIconPicker(col) {
-  const card = document.querySelector(`.collection-card[data-collection-id="${col.id}"]`);
-  if (!card) return;
-  const body = card.querySelector('.collection-body');
-  body.classList.remove('collapsed');
-  renderIconPicker(body, col.icon, DEFAULT_ICONS, async (icon) => {
+  renderIconPicker(null, col.icon, DEFAULT_ICONS, async (icon) => {
     await updateCollectionIcon(data, col.id, icon);
     renderCollectionsUI();
   });
@@ -750,6 +1083,44 @@ function setupEventListeners() {
   setupExportImport();
   setupBackgroundSettings();
   setupTooltip();
+
+  // Auth
+  document.getElementById('btn-sign-in').addEventListener('click', handleSignIn);
+  document.getElementById('btn-sign-out').addEventListener('click', handleSignOut);
+  document.getElementById('btn-switch-account').addEventListener('click', handleSwitchAccount);
+
+  document.getElementById('user-menu-trigger').addEventListener('click', () => {
+    const dropdown = document.getElementById('user-dropdown');
+    dropdown.hidden = !dropdown.hidden;
+    if (!dropdown.hidden) {
+      const emailEl = document.getElementById('user-email');
+      const syncInfo = document.getElementById('user-sync-info');
+      getStatus().then(s => {
+        emailEl.textContent = s.user?.email || '';
+        syncInfo.textContent = lastSyncTime ? t('lastSync', getLastSyncDisplay()) : '';
+      });
+    }
+  });
+
+  // Settings dropdown
+  document.getElementById('btn-settings').addEventListener('click', () => {
+    const sd = document.getElementById('settings-dropdown');
+    sd.hidden = !sd.hidden;
+  });
+
+  document.addEventListener('click', (e) => {
+    const userDropdown = document.getElementById('user-dropdown');
+    const userTrigger = document.getElementById('user-menu-trigger');
+    if (!userDropdown.hidden && !userDropdown.contains(e.target) && !userTrigger.contains(e.target)) {
+      userDropdown.hidden = true;
+    }
+
+    const settingsDropdown = document.getElementById('settings-dropdown');
+    const settingsTrigger = document.getElementById('btn-settings');
+    if (!settingsDropdown.hidden && !settingsDropdown.contains(e.target) && !settingsTrigger.contains(e.target)) {
+      settingsDropdown.hidden = true;
+    }
+  });
 }
 
 // === Start ===

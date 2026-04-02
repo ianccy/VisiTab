@@ -78,7 +78,6 @@ function renderCollectionCard(col, handlers) {
   card.className = 'collection-card';
   card.dataset.collectionId = col.id;
   card.draggable = true;
-
   // Header
   const header = document.createElement('div');
   header.className = 'collection-header';
@@ -97,6 +96,7 @@ function renderCollectionCard(col, handlers) {
   const name = document.createElement('span');
   name.className = 'collection-name';
   name.textContent = col.name;
+  name.style.color = col.color;
   if (!col.linked) {
     name.style.cursor = 'text';
     name.addEventListener('click', (e) => {
@@ -116,6 +116,17 @@ function renderCollectionCard(col, handlers) {
     const badge = document.createElement('span');
     badge.className = 'linked-badge';
     badge.textContent = t('alreadyLinked');
+    left.appendChild(badge);
+  } else {
+    const status = col.status || 'local';
+    const badge = document.createElement('span');
+    if (status === 'cloud') {
+      badge.className = 'sync-badge synced';
+      badge.textContent = t('syncedBadge');
+    } else {
+      badge.className = 'sync-badge local';
+      badge.textContent = t('localDraftBadge');
+    }
     left.appendChild(badge);
   }
 
@@ -283,9 +294,19 @@ export function renderAddDropdown(anchorEl, collections, onSelect) {
 
   const rect = anchorEl.getBoundingClientRect();
   dropdown.style.position = 'fixed';
-  dropdown.style.top = `${rect.bottom + 4}px`;
   dropdown.style.right = `${window.innerWidth - rect.right}px`;
   document.body.appendChild(dropdown);
+
+  const dropdownRect = dropdown.getBoundingClientRect();
+  if (rect.bottom + 4 + dropdownRect.height > window.innerHeight) {
+    dropdown.style.top = `${rect.top - dropdownRect.height - 4}px`;
+  } else {
+    dropdown.style.top = `${rect.bottom + 4}px`;
+  }
+  if (rect.right - dropdownRect.width < 0) {
+    dropdown.style.right = 'auto';
+    dropdown.style.left = '8px';
+  }
 
   const overlay = document.getElementById('dropdown-overlay');
   overlay.hidden = false;
@@ -321,32 +342,76 @@ export function renderContextMenu(anchorEl, items) {
 
   const rect = anchorEl.getBoundingClientRect();
   menu.style.position = 'fixed';
-  menu.style.top = `${rect.bottom + 4}px`;
   menu.style.left = `${rect.left}px`;
   document.body.appendChild(menu);
+
+  const menuRect = menu.getBoundingClientRect();
+  if (rect.bottom + 4 + menuRect.height > window.innerHeight) {
+    menu.style.top = `${rect.top - menuRect.height - 4}px`;
+  } else {
+    menu.style.top = `${rect.bottom + 4}px`;
+  }
+  if (rect.left + menuRect.width > window.innerWidth) {
+    menu.style.left = `${window.innerWidth - menuRect.width - 8}px`;
+  }
 
   const overlay = document.getElementById('dropdown-overlay');
   overlay.hidden = false;
   overlay.onclick = closeDropdown;
 }
 
-export function renderColorPicker(container, currentColor, colors, onSelect) {
+export function renderColorPicker(_container, currentColor, colors, onSelect) {
+  const backdrop = document.createElement('div');
+  backdrop.className = 'modal-backdrop';
+
+  const panel = document.createElement('div');
+  panel.className = 'picker-panel';
+
   const picker = document.createElement('div');
   picker.className = 'color-picker';
   for (const color of colors) {
     const swatch = document.createElement('div');
     swatch.className = 'color-swatch' + (color === currentColor ? ' active' : '');
     swatch.style.background = color;
-    swatch.addEventListener('click', () => onSelect(color));
+    if (color === '#ffffff') {
+      swatch.style.border = '2px solid #ccc';
+    }
+    swatch.addEventListener('click', () => {
+      backdrop.remove();
+      onSelect(color);
+    });
     picker.appendChild(swatch);
   }
-  container.innerHTML = '';
-  container.appendChild(picker);
+
+  const customRow = document.createElement('div');
+  customRow.className = 'color-custom-row';
+  const colorInput = document.createElement('input');
+  colorInput.type = 'color';
+  colorInput.className = 'color-custom-input';
+  colorInput.value = currentColor || '#7c83ff';
+  const applyBtn = document.createElement('button');
+  applyBtn.className = 'modal-btn primary';
+  applyBtn.textContent = t('confirm');
+  applyBtn.addEventListener('click', () => {
+    backdrop.remove();
+    onSelect(colorInput.value);
+  });
+  customRow.append(colorInput, applyBtn);
+
+  panel.append(picker, customRow);
+  backdrop.appendChild(panel);
+  backdrop.addEventListener('click', (e) => {
+    if (e.target === backdrop) backdrop.remove();
+  });
+  document.body.appendChild(backdrop);
 }
 
-export function renderIconPicker(container, currentIcon, icons, onSelect) {
-  const wrapper = document.createElement('div');
-  wrapper.className = 'icon-picker-wrapper';
+export function renderIconPicker(_container, currentIcon, icons, onSelect) {
+  const backdrop = document.createElement('div');
+  backdrop.className = 'modal-backdrop';
+
+  const panel = document.createElement('div');
+  panel.className = 'picker-panel';
 
   const picker = document.createElement('div');
   picker.className = 'icon-picker';
@@ -354,7 +419,10 @@ export function renderIconPicker(container, currentIcon, icons, onSelect) {
     const opt = document.createElement('div');
     opt.className = 'icon-option' + (ic === currentIcon ? ' active' : '');
     opt.textContent = ic;
-    opt.addEventListener('click', () => onSelect(ic));
+    opt.addEventListener('click', () => {
+      backdrop.remove();
+      onSelect(ic);
+    });
     picker.appendChild(opt);
   }
 
@@ -372,20 +440,29 @@ export function renderIconPicker(container, currentIcon, icons, onSelect) {
   confirmBtn.textContent = t('confirm');
   confirmBtn.addEventListener('click', () => {
     const val = input.value.trim();
-    if (val) onSelect(val);
+    if (val) {
+      backdrop.remove();
+      onSelect(val);
+    }
   });
 
   input.addEventListener('keydown', (e) => {
     if (e.key === 'Enter') {
       const val = input.value.trim();
-      if (val) onSelect(val);
+      if (val) {
+        backdrop.remove();
+        onSelect(val);
+      }
     }
   });
 
   customRow.append(input, confirmBtn);
-  wrapper.append(picker, customRow);
-  container.innerHTML = '';
-  container.appendChild(wrapper);
+  panel.append(picker, customRow);
+  backdrop.appendChild(panel);
+  backdrop.addEventListener('click', (e) => {
+    if (e.target === backdrop) backdrop.remove();
+  });
+  document.body.appendChild(backdrop);
 }
 
 export function renderModal(title, message, buttons) {
@@ -597,6 +674,177 @@ export function renderFolderPicker(tree, excludeId, linkedIds, onSelect) {
   backdrop.appendChild(modal);
   backdrop.addEventListener('click', (e) => {
     if (e.target === backdrop) backdrop.remove();
+  });
+  document.body.appendChild(backdrop);
+}
+
+export function renderMigrationModal(collections, onConfirm, onCancel, options = {}) {
+  const titleKey = options.titleKey || 'migrationTitle';
+  const messageKey = options.messageKey || 'migrationMsg';
+  const confirmKey = options.confirmKey || 'migrationConfirm';
+  const cancelKey = options.cancelKey || 'migrationCancel';
+  const showKeepOption = options.showKeepOption === true;
+  const warningKey = options.warningKey || (!showKeepOption ? 'migrationWarning' : null);
+  const backdropCancel = options.backdropCancel === true;
+
+  const backdrop = document.createElement('div');
+  backdrop.className = 'modal-backdrop';
+
+  const modal = document.createElement('div');
+  modal.className = 'modal modal-migration';
+
+  const h3 = document.createElement('h3');
+  h3.textContent = t(titleKey);
+
+  const p = document.createElement('p');
+  p.textContent = t(messageKey, collections.length);
+
+  const hints = document.createElement('div');
+  hints.className = 'migration-hints';
+  const hintSync = document.createElement('p');
+  hintSync.textContent = t('migrationHintSync');
+  hints.appendChild(hintSync);
+  if (showKeepOption) {
+    const hintKeep = document.createElement('p');
+    hintKeep.textContent = t('migrationHintKeep');
+    hints.appendChild(hintKeep);
+  }
+
+  let warningEl = null;
+  if (warningKey) {
+    warningEl = document.createElement('div');
+    warningEl.className = 'migration-warning';
+    warningEl.textContent = t(warningKey);
+  }
+
+  // Select all controls
+  const selectAllRow = document.createElement('div');
+  selectAllRow.className = 'migration-select-all';
+
+  const syncInputs = [];
+  const keepInputs = [];
+
+  const selectAllSyncLabel = document.createElement('label');
+  selectAllSyncLabel.className = 'migration-check';
+  const selectAllSyncInput = document.createElement('input');
+  selectAllSyncInput.type = 'checkbox';
+  selectAllSyncInput.checked = true;
+  const selectAllSyncText = document.createElement('span');
+  selectAllSyncText.textContent = t('selectAllSync');
+  selectAllSyncLabel.append(selectAllSyncInput, selectAllSyncText);
+  selectAllRow.appendChild(selectAllSyncLabel);
+
+  if (showKeepOption) {
+    const selectAllKeepLabel = document.createElement('label');
+    selectAllKeepLabel.className = 'migration-check';
+    const selectAllKeepInput = document.createElement('input');
+    selectAllKeepInput.type = 'checkbox';
+    selectAllKeepInput.checked = true;
+    const selectAllKeepText = document.createElement('span');
+    selectAllKeepText.textContent = t('selectAllKeep');
+    selectAllKeepLabel.append(selectAllKeepInput, selectAllKeepText);
+    selectAllRow.appendChild(selectAllKeepLabel);
+
+    selectAllKeepInput.addEventListener('change', () => {
+      for (const cb of keepInputs) {
+        cb.checked = selectAllKeepInput.checked;
+        cb.dispatchEvent(new Event('change'));
+      }
+    });
+  }
+
+  selectAllSyncInput.addEventListener('change', () => {
+    for (const cb of syncInputs) {
+      cb.checked = selectAllSyncInput.checked;
+      cb.dispatchEvent(new Event('change'));
+    }
+  });
+
+  const list = document.createElement('ul');
+  list.className = 'migration-list';
+
+  const selections = new Map();
+  for (const col of collections) {
+    selections.set(col.id, { collectionId: col.id, sync: true, keep: !showKeepOption ? false : true });
+
+    const li = document.createElement('li');
+    li.className = 'migration-item';
+
+    const info = document.createElement('div');
+    info.className = 'migration-item-info';
+    info.textContent = `${col.icon} ${col.name} (${col.tabs.length} tabs)`;
+
+    const controls = document.createElement('div');
+    controls.className = 'migration-item-controls';
+
+    const syncLabel = document.createElement('label');
+    syncLabel.className = 'migration-check';
+    const syncInput = document.createElement('input');
+    syncInput.type = 'checkbox';
+    syncInput.checked = true;
+    const syncText = document.createElement('span');
+    syncText.textContent = t('migrationOptionSync');
+    syncInput.addEventListener('change', () => {
+      const s = selections.get(col.id);
+      selections.set(col.id, { ...s, sync: syncInput.checked });
+    });
+    syncLabel.append(syncInput, syncText);
+    syncInputs.push(syncInput);
+
+    controls.append(syncLabel);
+
+    if (showKeepOption) {
+      const keepLabel = document.createElement('label');
+      keepLabel.className = 'migration-check';
+      const keepInput = document.createElement('input');
+      keepInput.type = 'checkbox';
+      keepInput.checked = true;
+      const keepText = document.createElement('span');
+      keepText.textContent = t('migrationOptionKeep');
+      keepInput.addEventListener('change', () => {
+        const s = selections.get(col.id);
+        selections.set(col.id, { ...s, keep: keepInput.checked });
+      });
+      keepLabel.append(keepInput, keepText);
+      controls.append(keepLabel);
+      keepInputs.push(keepInput);
+    }
+
+    li.append(info, controls);
+    list.appendChild(li);
+  }
+
+  const actions = document.createElement('div');
+  actions.className = 'modal-actions';
+
+  const cancelBtn = document.createElement('button');
+  cancelBtn.className = 'modal-btn secondary';
+  cancelBtn.textContent = t(cancelKey);
+  cancelBtn.addEventListener('click', () => {
+    backdrop.remove();
+    if (onCancel) onCancel();
+  });
+
+  const confirmBtn = document.createElement('button');
+  confirmBtn.className = 'modal-btn primary';
+  confirmBtn.textContent = t(confirmKey);
+  confirmBtn.addEventListener('click', () => {
+    backdrop.remove();
+    onConfirm(Array.from(selections.values()));
+  });
+
+  actions.append(cancelBtn, confirmBtn);
+  if (warningEl) {
+    modal.append(h3, p, hints, warningEl, selectAllRow, list, actions);
+  } else {
+    modal.append(h3, p, hints, selectAllRow, list, actions);
+  }
+  backdrop.appendChild(modal);
+  backdrop.addEventListener('click', (e) => {
+    if (e.target === backdrop) {
+      backdrop.remove();
+      if (backdropCancel && onCancel) onCancel();
+    }
   });
   document.body.appendChild(backdrop);
 }

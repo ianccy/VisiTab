@@ -163,7 +163,7 @@ async function init() {
     }
   });
 
-  // Open VisiTab link
+  // Open TabZ link
   const openBtn = document.getElementById('btn-open-visitab');
   openBtn.textContent = t('popupOpenVisiTab');
   openBtn.addEventListener('click', (e) => {
