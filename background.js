@@ -21,8 +21,8 @@ const AUTH_SCOPES = [
   'https://www.googleapis.com/auth/userinfo.email'
 ];
 
-const FOLDER_NAME = 'VisiTab_Storage';
-const FILE_NAME = 'visitab-data.json';
+const FOLDER_NAME = 'TabZ_Storage';
+const FILE_NAME = 'tabz-data.json';
 const DRIVE_API = 'https://www.googleapis.com/drive/v3';
 const UPLOAD_API = 'https://www.googleapis.com/upload/drive/v3';
 

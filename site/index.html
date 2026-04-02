@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>VisiTab — Visual Tab Manager for Chrome</title>
+  <title>TabZ — Visual Tab Manager for Chrome</title>
   <meta name="description" content="A Chrome extension that replaces your new tab page with a visual tab manager. Organize tabs into collections, sync with Google Drive, and customize your workspace.">
   <link rel="icon" type="image/png" href="../icons/icon48.png">
   <style>
@@ -289,12 +289,12 @@
   <!-- Nav -->
   <nav>
     <a href="#" class="nav-brand">
-      <img src="../icons/icon48.png" alt="VisiTab icon">
-      VisiTab
+      <img src="../icons/icon48.png" alt="TabZ icon">
+      TabZ
     </a>
     <div class="nav-links">
       <a href="#features" data-i18n="navFeatures">Features</a>
-      <a href="https://github.com/ianccy/VisiTab" target="_blank" rel="noopener">GitHub</a>
+      <a href="https://github.com/ianccy/TabZ" target="_blank" rel="noopener">GitHub</a>
       <a href="#contact" data-i18n="navContact">Contact</a>
       <select class="lang-select" id="lang-select">
         <option value="en">English</option>
@@ -307,42 +307,49 @@
   <!-- Hero -->
   <section class="hero">
     <h1 data-i18n-html="heroTitle">Your new tab,<br><span>organized visually.</span></h1>
-    <p data-i18n="heroDesc">A Chrome extension that turns your new tab into a powerful visual workspace. Group tabs into collections, sync across devices, and stay focused.</p>
+    <p data-i18n="heroDesc">A Chrome extension that turns your new tab into a powerful visual workspace. Local bookmarks, Google Drive sync, and linked bookmark folders &mdash; all in one page.</p>
     <div class="hero-buttons">
-      <a href="https://github.com/ianccy/VisiTab" class="btn btn-primary" target="_blank" rel="noopener">
+      <a href="https://github.com/ianccy/TabZ" class="btn btn-primary" target="_blank" rel="noopener">
         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 19c-5 1.5-5-2.5-7-3m14 6v-3.87a3.37 3.37 0 0 0-.94-2.61c3.14-.35 6.44-1.54 6.44-7A5.44 5.44 0 0 0 20 4.77 5.07 5.07 0 0 0 19.91 1S18.73.65 16 2.48a13.38 13.38 0 0 0-7 0C6.27.65 5.09 1 5.09 1A5.07 5.07 0 0 0 5 4.77a5.44 5.44 0 0 0-1.5 3.78c0 5.42 3.3 6.61 6.44 7A3.37 3.37 0 0 0 9 18.13V22"/></svg>
         <span data-i18n="heroBtn">View on GitHub</span>
       </a>
     </div>
     <div class="hero-screenshot">
-      <img src="../images/demo.png" alt="VisiTab screenshot showing collections and open tabs">
+      <img src="../images/demo.png" alt="TabZ screenshot showing collections and open tabs">
     </div>
   </section>
 
-  <!-- Why VisiTab -->
+  <!-- Why TabZ -->
   <section class="why" id="why">
-    <h2 data-i18n="whyTitle">Why VisiTab?</h2>
-    <p class="subtitle" data-i18n="whySubtitle">Not just another tab manager. Built different.</p>
+    <h2 data-i18n="whyTitle">One interface, three ways to manage tabs</h2>
+    <p class="subtitle" data-i18n="whySubtitle">Local bookmarks, cloud storage, linked folders &mdash; all unified in your new tab page.</p>
     <div class="why-list">
       <div class="why-item">
-        <div class="why-icon"><svg viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg></div>
+        <div class="why-icon"><svg viewBox="0 0 24 24"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/></svg></div>
         <div>
-          <h3 data-i18n="why1Title">Your new tab, reimagined</h3>
-          <p data-i18n="why1Desc">Most tab managers hide behind a popup or sidebar. VisiTab replaces your new tab page entirely &mdash; every time you open a new tab, your workspace is right there. No extra clicks, no context switching.</p>
+          <h3 data-i18n="why1Title">Local bookmarks as collections</h3>
+          <p data-i18n="why1Desc">Your collections are stored as Chrome bookmarks &mdash; no proprietary format, no lock-in. Even without signing in, everything is saved and accessible from Chrome's built-in bookmark manager.</p>
         </div>
       </div>
       <div class="why-item">
-        <div class="why-icon"><svg viewBox="0 0 24 24"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg></div>
+        <div class="why-icon"><svg viewBox="0 0 24 24"><path d="M18 10h-1.26A8 8 0 1 0 9 20h9a5 5 0 0 0 0-10z"/></svg></div>
         <div>
-          <h3 data-i18n="why2Title">Your data stays yours</h3>
-          <p data-i18n="why2Desc">No third-party servers. Collections are stored locally in Chrome, and cloud sync goes directly to your own Google Drive as a simple JSON file. You own your data, always.</p>
+          <h3 data-i18n="why2Title">Google Drive cloud sync</h3>
+          <p data-i18n="why2Desc">Sign in with Google to sync collections across devices. Data is stored as a JSON file in your own Google Drive &mdash; no third-party servers, no subscription. You own your data, always.</p>
         </div>
       </div>
       <div class="why-item">
         <div class="why-icon"><svg viewBox="0 0 24 24"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg></div>
         <div>
-          <h3 data-i18n="why3Title">Works with your bookmarks, not against them</h3>
-          <p data-i18n="why3Desc">Link any existing Chrome bookmark folder as a live collection. Edits sync both ways &mdash; no need to choose between bookmarks and VisiTab. Your bookmarks become visual and manageable.</p>
+          <h3 data-i18n="why3Title">Link existing bookmark folders</h3>
+          <p data-i18n="why3Desc">Already have bookmark folders organized your way? Link them directly as live collections. Edits sync both ways &mdash; no migration needed, no duplication. Your bookmarks become visual and manageable.</p>
+        </div>
+      </div>
+      <div class="why-item">
+        <div class="why-icon"><svg viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg></div>
+        <div>
+          <h3 data-i18n="why4Title">Mix and match freely</h3>
+          <p data-i18n="why4Desc">Use all three methods together. Keep some collections local, sync others to the cloud, and link existing bookmark folders &mdash; all visible side by side on the same page. No other tab manager gives you this flexibility.</p>
         </div>
       </div>
     </div>
@@ -371,7 +378,7 @@
       <div class="feature-card">
         <span class="feature-icon"><svg viewBox="0 0 24 24"><path d="M19 21l-7-5-7 5V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/></svg></span>
         <h3 data-i18n="f4Title">Linked Bookmarks</h3>
-        <p data-i18n="f4Desc">Turn any Chrome bookmark folder into a live collection. Changes flow both ways &mdash; edit in VisiTab or in Chrome's bookmark manager, both stay in sync.</p>
+        <p data-i18n="f4Desc">Turn any Chrome bookmark folder into a live collection. Changes flow both ways &mdash; edit in TabZ or in Chrome's bookmark manager, both stay in sync.</p>
       </div>
       <div class="feature-card">
         <span class="feature-icon"><svg viewBox="0 0 24 24"><circle cx="13.5" cy="6.5" r="2.5"/><circle cx="17.5" cy="10.5" r="2.5"/><circle cx="8.5" cy="7.5" r="2.5"/><circle cx="6.5" cy="12.5" r="2.5"/><path d="M12 2C6.5 2 2 6.5 2 12s4.5 10 10 10c.93 0 1.5-.67 1.5-1.5 0-.39-.15-.74-.39-1.04-.23-.29-.38-.63-.38-1.04 0-.83.67-1.5 1.5-1.5H16c3.31 0 6-2.69 6-6 0-5.17-4.49-9-10-9z"/></svg></span>
@@ -405,9 +412,9 @@
   <footer id="contact">
     <div class="footer-links">
       <a href="mailto:chu2815@hotmail.com">chu2815@hotmail.com</a>
-      <a href="https://github.com/ianccy/VisiTab" target="_blank" rel="noopener">GitHub</a>
+      <a href="https://github.com/ianccy/TabZ" target="_blank" rel="noopener">GitHub</a>
     </div>
-    <p data-i18n-html="footerLicense">VisiTab &copy; 2025. Licensed under <a href="https://creativecommons.org/licenses/by-nd/4.0/" target="_blank" rel="noopener">CC BY-ND 4.0</a>.</p>
+    <p data-i18n-html="footerLicense">TabZ &copy; 2025. Licensed under <a href="https://creativecommons.org/licenses/by-nd/4.0/" target="_blank" rel="noopener">CC BY-ND 4.0</a>.</p>
   </footer>
 
   <script>
@@ -416,18 +423,18 @@
         navFeatures: 'Features',
         navContact: 'Contact',
         heroTitle: 'Your new tab,<br><span>organized visually.</span>',
-        heroDesc: 'A Chrome extension that turns your new tab into a powerful visual workspace. Group tabs into collections, sync across devices, and stay focused.',
+        heroDesc: 'A Chrome extension that turns your new tab into a powerful visual workspace. Local bookmarks, Google Drive sync, and linked bookmark folders \u2014 all in one page.',
         heroBtn: 'View on GitHub',
-        whyTitle: 'Why VisiTab?',
-        whySubtitle: 'Not just another tab manager. Built different.',
-        why1Title: 'Your new tab, reimagined',
-        why1Desc: 'Most tab managers hide behind a popup or sidebar. VisiTab replaces your new tab page entirely \u2014 every time you open a new tab, your workspace is right there. No extra clicks, no context switching.',
-        why2Title: 'Your data stays yours',
-        why2Desc: 'No third-party servers. Collections are stored locally in Chrome, and cloud sync goes directly to your own Google Drive as a simple JSON file. You own your data, always.',
-        why3Title: 'Works with your bookmarks, not against them',
-        why3Desc: 'Link any existing Chrome bookmark folder as a live collection. Edits sync both ways \u2014 no need to choose between bookmarks and VisiTab. Your bookmarks become visual and manageable.',
-        why4Title: 'Multilingual interface',
-        why4Desc: 'Full support for English, Traditional Chinese, and Japanese. Switch languages anytime from the settings menu \u2014 every label, button, and message is translated.',
+        whyTitle: 'One interface, three ways to manage tabs',
+        whySubtitle: 'Local bookmarks, cloud storage, linked folders \u2014 all unified in your new tab page.',
+        why1Title: 'Local bookmarks as collections',
+        why1Desc: 'Your collections are stored as Chrome bookmarks \u2014 no proprietary format, no lock-in. Even without signing in, everything is saved and accessible from Chrome\'s built-in bookmark manager.',
+        why2Title: 'Google Drive cloud sync',
+        why2Desc: 'Sign in with Google to sync collections across devices. Data is stored as a JSON file in your own Google Drive \u2014 no third-party servers, no subscription. You own your data, always.',
+        why3Title: 'Link existing bookmark folders',
+        why3Desc: 'Already have bookmark folders organized your way? Link them directly as live collections. Edits sync both ways \u2014 no migration needed, no duplication. Your bookmarks become visual and manageable.',
+        why4Title: 'Mix and match freely',
+        why4Desc: 'Use all three methods together. Keep some collections local, sync others to the cloud, and link existing bookmark folders \u2014 all visible side by side on the same page. No other tab manager gives you this flexibility.',
         featuresTitle: 'Features',
         featuresSubtitle: 'Everything you need to keep your browser organized.',
         f1Title: 'Collections',
@@ -437,7 +444,7 @@
         f3Title: 'Google Drive Sync',
         f3Desc: 'Sign in with Google to sync collections across devices. Data is stored as a file in your own Google Drive. Switch between accounts with automatic draft handling.',
         f4Title: 'Linked Bookmarks',
-        f4Desc: 'Turn any Chrome bookmark folder into a live collection. Changes flow both ways \u2014 edit in VisiTab or in Chrome\'s bookmark manager, both stay in sync.',
+        f4Desc: 'Turn any Chrome bookmark folder into a live collection. Changes flow both ways \u2014 edit in TabZ or in Chrome\'s bookmark manager, both stay in sync.',
         f5Title: 'Customization',
         f5Desc: 'Dark and light themes. Custom background colors or images. Choose from 32 collection colors and 19 emoji icons to make your workspace truly yours.',
         f6Title: 'Search & Export',
@@ -448,24 +455,24 @@
         f8Desc: 'Unsaved collections stay as local drafts. Sign in to Google and choose which to upload \u2014 nothing syncs until you say so.',
         f9Title: 'Open Tabs Sidebar',
         f9Desc: 'See all open browser tabs in a real-time sidebar. Close tabs, drag them into collections, or click to switch \u2014 all from your new tab page.',
-        footerLicense: 'VisiTab &copy; 2025. Licensed under <a href="https://creativecommons.org/licenses/by-nd/4.0/" target="_blank" rel="noopener">CC BY-ND 4.0</a>.',
+        footerLicense: 'TabZ &copy; 2025. Licensed under <a href="https://creativecommons.org/licenses/by-nd/4.0/" target="_blank" rel="noopener">CC BY-ND 4.0</a>.',
       },
       'zh-TW': {
         navFeatures: '功能介紹',
         navContact: '聯絡我們',
         heroTitle: '你的新分頁，<br><span>視覺化管理。</span>',
-        heroDesc: '一款 Chrome 擴充功能，將新分頁變成強大的視覺化工作空間。分頁分組收藏、跨裝置同步，讓你專注於重要的事。',
+        heroDesc: '一款 Chrome 擴充功能，將新分頁變成強大的視覺化工作空間。本機書籤、Google 雲端同步、連結既有書籤資料夾 \u2014 全部整合在同一頁面。',
         heroBtn: '前往 GitHub',
-        whyTitle: '為什麼選擇 VisiTab？',
-        whySubtitle: '不只是分頁管理工具，而是全新的工作方式。',
-        why1Title: '重新定義新分頁',
-        why1Desc: '大多數分頁管理工具藏在彈出視窗或側邊欄。VisiTab 直接取代你的新分頁 \u2014 每次開新分頁，工作空間就在眼前，不需要額外點擊。',
-        why2Title: '你的資料，由你掌控',
-        why2Desc: '沒有第三方伺服器。收藏存在 Chrome 本機，雲端同步直接連到你自己的 Google 雲端硬碟，以 JSON 檔案儲存。資料永遠屬於你。',
-        why3Title: '與書籤協作，而非取代',
-        why3Desc: '將任何 Chrome 書籤資料夾連結為即時收藏。雙向同步 \u2014 在 VisiTab 或書籤管理員中編輯都會同步更新。讓書籤變得直覺好管理。',
-        why4Title: '多語系介面',
-        why4Desc: '完整支援英文、繁體中文與日文。隨時從設定選單切換語言 \u2014 所有標籤、按鈕與訊息都已翻譯。',
+        whyTitle: '一個介面，三種管理方式',
+        whySubtitle: '本機書籤、雲端儲存、連結資料夾 \u2014 統一呈現在你的新分頁。',
+        why1Title: '本機書籤即收藏',
+        why1Desc: '收藏直接儲存為 Chrome 書籤 \u2014 沒有專有格式、沒有綁定。即使不登入，所有資料都已儲存，並可從 Chrome 內建的書籤管理員存取。',
+        why2Title: 'Google 雲端同步',
+        why2Desc: '登入 Google 即可跨裝置同步收藏。資料以 JSON 檔案儲存在你自己的 Google 雲端硬碟 \u2014 沒有第三方伺服器、不需訂閱。資料永遠屬於你。',
+        why3Title: '連結既有書籤資料夾',
+        why3Desc: '已經有整理好的書籤資料夾？直接連結為即時收藏。雙向同步 \u2014 不需搬移、不會重複。讓書籤變得直覺好管理。',
+        why4Title: '自由混搭',
+        why4Desc: '三種方式可以同時使用。部分收藏留在本機、部分同步雲端、再連結既有的書籤資料夾 \u2014 全部並排顯示在同一頁面。沒有其他分頁管理工具有這種彈性。',
         featuresTitle: '功能介紹',
         featuresSubtitle: '管理瀏覽器所需的一切功能。',
         f1Title: '分類收藏',
@@ -475,7 +482,7 @@
         f3Title: 'Google 雲端同步',
         f3Desc: '登入 Google 帳號即可跨裝置同步收藏。資料以檔案形式儲存在你自己的 Google 雲端硬碟，支援帳號切換與草稿處理。',
         f4Title: '連結書籤資料夾',
-        f4Desc: '將任何 Chrome 書籤資料夾轉為即時收藏。雙向同步 \u2014 在 VisiTab 或 Chrome 書籤管理員編輯，兩邊都會更新。',
+        f4Desc: '將任何 Chrome 書籤資料夾轉為即時收藏。雙向同步 \u2014 在 TabZ 或 Chrome 書籤管理員編輯，兩邊都會更新。',
         f5Title: '個人化自訂',
         f5Desc: '深色與淺色主題切換。自訂背景顏色或圖片。32 種收藏顏色與 19 個 emoji 圖示，打造專屬工作空間。',
         f6Title: '搜尋與匯出',
@@ -486,24 +493,24 @@
         f8Desc: '未同步的收藏保留為本機草稿。登入 Google 後可選擇要上傳哪些 \u2014 在你決定之前不會同步。',
         f9Title: '開啟分頁側邊欄',
         f9Desc: '即時顯示所有開啟的瀏覽器分頁。關閉分頁、拖曳到收藏、或點擊切換 \u2014 全都在新分頁頁面完成。',
-        footerLicense: 'VisiTab &copy; 2025. 授權條款：<a href="https://creativecommons.org/licenses/by-nd/4.0/" target="_blank" rel="noopener">CC BY-ND 4.0</a>。',
+        footerLicense: 'TabZ &copy; 2025. 授權條款：<a href="https://creativecommons.org/licenses/by-nd/4.0/" target="_blank" rel="noopener">CC BY-ND 4.0</a>。',
       },
       ja: {
         navFeatures: '機能紹介',
         navContact: 'お問い合わせ',
         heroTitle: '新しいタブを、<br><span>ビジュアルに整理。</span>',
-        heroDesc: 'Chrome 拡張機能で、新しいタブをパワフルなビジュアルワークスペースに。タブをコレクションにまとめ、デバイス間で同期し、集中力を維持しましょう。',
+        heroDesc: 'Chrome 拡張機能で、新しいタブをパワフルなビジュアルワークスペースに。ローカルブックマーク、Google ドライブ同期、既存フォルダの連携 \u2014 すべてを一つのページに。',
         heroBtn: 'GitHub で見る',
-        whyTitle: 'なぜ VisiTab？',
-        whySubtitle: 'ただのタブマネージャーではありません。',
-        why1Title: '新しいタブを再定義',
-        why1Desc: '多くのタブマネージャーはポップアップやサイドバーに隠れています。VisiTab は新しいタブページそのものを置き換えます \u2014 新しいタブを開くたびに、ワークスペースがすぐそこに。',
-        why2Title: 'あなたのデータはあなたのもの',
-        why2Desc: 'サードパーティのサーバーは使用しません。コレクションは Chrome のローカルに保存され、クラウド同期はあなた自身の Google ドライブに JSON ファイルとして直接保存されます。',
-        why3Title: 'ブックマークと連携、置き換えではなく',
-        why3Desc: '既存の Chrome ブックマークフォルダをライブコレクションとしてリンク。双方向同期 \u2014 VisiTab でもブックマークマネージャーでも編集が反映されます。',
-        why4Title: '多言語インターフェース',
-        why4Desc: '英語、繁体字中国語、日本語に完全対応。設定メニューからいつでも言語を切り替えられます \u2014 すべてのラベル、ボタン、メッセージが翻訳済みです。',
+        whyTitle: '1つのインターフェース、3つの管理方法',
+        whySubtitle: 'ローカルブックマーク、クラウドストレージ、リンクフォルダ \u2014 新しいタブページに統合。',
+        why1Title: 'ローカルブックマークがコレクションに',
+        why1Desc: 'コレクションは Chrome のブックマークとして保存 \u2014 独自フォーマットなし、ロックインなし。ログインしなくても、すべてのデータは Chrome の内蔵ブックマークマネージャーから保存・アクセスできます。',
+        why2Title: 'Google ドライブ クラウド同期',
+        why2Desc: 'Google にログインしてデバイス間でコレクションを同期。データはあなた自身の Google ドライブに JSON ファイルとして保存 \u2014 サードパーティサーバーなし、サブスクリプション不要。',
+        why3Title: '既存のブックマークフォルダを連携',
+        why3Desc: 'すでに整理されたブックマークフォルダがありますか？直接ライブコレクションとしてリンク。双方向同期 \u2014 移行不要、重複なし。ブックマークが直感的に管理できます。',
+        why4Title: '自由に組み合わせ',
+        why4Desc: '3つの方法を同時に使用可能。一部をローカルに、一部をクラウドに同期し、既存のブックマークフォルダもリンク \u2014 すべてが同じページに並んで表示されます。この柔軟性は他にありません。',
         featuresTitle: '機能紹介',
         featuresSubtitle: 'ブラウザを整理するために必要なすべての機能。',
         f1Title: 'コレクション',
@@ -513,7 +520,7 @@
         f3Title: 'Google ドライブ同期',
         f3Desc: 'Google アカウントでログインしてデバイス間でコレクションを同期。データはあなた自身の Google ドライブにファイルとして保存されます。',
         f4Title: 'ブックマーク連携',
-        f4Desc: 'Chrome のブックマークフォルダをライブコレクションに変換。双方向同期 \u2014 VisiTab でも Chrome のブックマークマネージャーでも編集が反映されます。',
+        f4Desc: 'Chrome のブックマークフォルダをライブコレクションに変換。双方向同期 \u2014 TabZ でも Chrome のブックマークマネージャーでも編集が反映されます。',
         f5Title: 'カスタマイズ',
         f5Desc: 'ダーク・ライトテーマの切り替え。背景色や画像のカスタマイズ。32 色のコレクションカラーと 19 個の絵文字アイコンであなただけのワークスペースに。',
         f6Title: '検索とエクスポート',
@@ -524,16 +531,16 @@
         f8Desc: '未同期のコレクションはローカル草稿として保持。Google にログイン後、アップロードするものを選択 \u2014 あなたが決めるまで同期されません。',
         f9Title: '開いているタブのサイドバー',
         f9Desc: '開いているすべてのブラウザタブをリアルタイムでサイドバーに表示。タブを閉じる、コレクションにドラッグ、クリックで切り替え \u2014 すべて新しいタブページから。',
-        footerLicense: 'VisiTab &copy; 2025. ライセンス：<a href="https://creativecommons.org/licenses/by-nd/4.0/" target="_blank" rel="noopener">CC BY-ND 4.0</a>',
+        footerLicense: 'TabZ &copy; 2025. ライセンス：<a href="https://creativecommons.org/licenses/by-nd/4.0/" target="_blank" rel="noopener">CC BY-ND 4.0</a>',
       }
     };
 
-    let currentLang = localStorage.getItem('visitab-site-lang') || 'en';
+    let currentLang = localStorage.getItem('tabz-site-lang') || 'en';
     const selectEl = document.getElementById('lang-select');
 
     function applyLang(lang) {
       currentLang = lang;
-      localStorage.setItem('visitab-site-lang', lang);
+      localStorage.setItem('tabz-site-lang', lang);
       document.documentElement.lang = lang;
       selectEl.value = lang;
 

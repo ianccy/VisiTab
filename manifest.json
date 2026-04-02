@@ -1,6 +1,6 @@
 {
   "manifest_version": 3,
-  "name": "VisiTab",
+  "name": "TabZ",
   "version": "1.2.0",
   "description": "Manage your browser tabs with collections",
   "permissions": ["tabs", "storage", "bookmarks", "identity"],
@@ -18,7 +18,7 @@
       "48": "icons/icon48.png",
       "128": "icons/icon128.png"
     },
-    "default_title": "Open VisiTab",
+    "default_title": "Open TabZ",
     "default_popup": "popup.html"
   },
   "chrome_url_overrides": {

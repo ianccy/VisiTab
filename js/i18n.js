@@ -1,6 +1,6 @@
 const messages = {
   'zh-TW': {
-    headerTitle: 'VisiTab',
+    headerTitle: 'TabZ',
     import: '匯入',
     export: '匯出',
     searchPlaceholder: '搜尋所有 tabs...',
@@ -49,8 +49,8 @@ const messages = {
     bgApply: '套用',
     bgReset: '重置背景',
     bgRemoveImage: '移除圖片',
-    popupOpenVisiTab: '打開 VisiTab',
-    popupDisabledMsg: '無法加入 VisiTab 自身頁面',
+    popupOpenTabZ: '打開 TabZ',
+    popupDisabledMsg: '無法加入 TabZ 自身頁面',
     popupAlreadyAdded: '已加入',
     popupAddToCollection: '加入此 Collection',
     // Auth & Sync
@@ -98,7 +98,7 @@ const messages = {
     localDraftBadge: '本機草稿',
   },
   en: {
-    headerTitle: 'VisiTab',
+    headerTitle: 'TabZ',
     import: 'Import',
     export: 'Export',
     searchPlaceholder: 'Search all tabs...',
@@ -147,8 +147,8 @@ const messages = {
     bgApply: 'Apply',
     bgReset: 'Reset Background',
     bgRemoveImage: 'Remove Image',
-    popupOpenVisiTab: 'Open VisiTab',
-    popupDisabledMsg: 'Cannot add VisiTab page itself',
+    popupOpenTabZ: 'Open TabZ',
+    popupDisabledMsg: 'Cannot add TabZ page itself',
     popupAlreadyAdded: 'Added',
     popupAddToCollection: 'Add to Collection',
     // Auth & Sync
@@ -196,7 +196,7 @@ const messages = {
     localDraftBadge: 'Local Draft',
   },
   ja: {
-    headerTitle: 'VisiTab',
+    headerTitle: 'TabZ',
     import: 'インポート',
     export: 'エクスポート',
     searchPlaceholder: 'すべてのタブを検索...',
@@ -245,8 +245,8 @@ const messages = {
     bgApply: '適用',
     bgReset: '背景をリセット',
     bgRemoveImage: '画像を削除',
-    popupOpenVisiTab: 'VisiTab を開く',
-    popupDisabledMsg: 'VisiTab 自身のページは追加できません',
+    popupOpenTabZ: 'TabZ を開く',
+    popupDisabledMsg: 'TabZ 自身のページは追加できません',
     popupAlreadyAdded: '追加済み',
     popupAddToCollection: 'コレクションに追加',
     // Auth & Sync
