@@ -1,4 +1,4 @@
-const ROOT_FOLDER_NAME = 'VisiTab Storage';
+const ROOT_FOLDER_NAME = 'TabZ Storage';
 
 // === Root Folder ===
 

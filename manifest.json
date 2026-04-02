@@ -1,16 +1,24 @@
 {
   "manifest_version": 3,
-  "name": "VisiTab",
-  "version": "1.1.0",
+  "name": "TabZ",
+  "version": "1.2.0",
   "description": "Manage your browser tabs with collections",
-  "permissions": ["tabs", "storage", "bookmarks"],
+  "permissions": ["tabs", "storage", "bookmarks", "identity"],
+  "oauth2": {
+    "client_id": "68632107320-11cdum9pi5ap74gcrm5fhr6a48kgnac2.apps.googleusercontent.com",
+    "scopes": [
+      "https://www.googleapis.com/auth/drive.file",
+      "https://www.googleapis.com/auth/userinfo.profile",
+      "https://www.googleapis.com/auth/userinfo.email"
+    ]
+  },
   "action": {
     "default_icon": {
       "16": "icons/icon16.png",
       "48": "icons/icon48.png",
       "128": "icons/icon128.png"
     },
-    "default_title": "Open VisiTab",
+    "default_title": "Open TabZ",
     "default_popup": "popup.html"
   },
   "chrome_url_overrides": {
