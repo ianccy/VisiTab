@@ -543,6 +543,10 @@ async function init() {
   await initAuth();
   triggerSync();
 
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'visible') triggerSync();
+  });
+
   chrome.runtime.onMessage.addListener((msg) => {
     if (msg.type === 'tabs-updated') refreshOpenTabs().then(renderOpenTabsUI);
   });
