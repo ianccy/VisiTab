@@ -790,6 +790,18 @@ export async function handleUserLogout(options = {}) {
   ]);
 }
 
+function sanitizeCloudData(raw) {
+  return {
+    version: raw.version || 1,
+    lastModified: raw.lastModified || Date.now(),
+    collections: Array.isArray(raw.collections) ? raw.collections : [],
+    uiState: {
+      collapsed: raw.uiState?.collapsed || {},
+      collectionOrder: raw.uiState?.collectionOrder || []
+    }
+  };
+}
+
 // === Background Sync ===
 
 export async function backgroundSync(data, onUpdated) {
